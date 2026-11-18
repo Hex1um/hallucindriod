@@ -454,7 +454,15 @@
         if(d&&d.reply)reply=String(d.reply);
       }catch(e){}
     }
-    if(!reply)reply=pick(['在的','哈哈哈哈','确实','让我想想','你说得对','嗯嗯，然后呢','这个我也有同感','稍等，我看一下']);
+    if(!reply){
+      // LLM 不可用时的兜底：按对方说话的类型给不同回应，避免每次都回同一句
+      const t=String(text||'');
+      if(/[?？]|吗|呢|怎么|为什么|哪/.test(t)) reply=pick(['我想想怎么说','这个还真得琢磨一下','让我回忆一下','嗯……有点复杂','你猜猜看']);
+      else if(/^(hi|hello|你好|在吗|在不在|嗨)/i.test(t)) reply=pick(['在的，怎么啦','嗨，好久不见','嗯我在','刚看到消息']);
+      else if(/谢|thanks|thank/i.test(t)) reply=pick(['客气啦','小事','不用谢','应该的']);
+      else if(/哈哈|笑死|hhh/i.test(t)) reply=pick(['哈哈哈哈','笑死我了','你也太逗了','真的假的哈哈']);
+      else reply=pick(['确实','说得对','有道理','嗯嗯','我懂','原来如此','那挺好的','然后呢']);
+    }
     socialPush({type:'social:reply',friend:friendName,text:(f.isGroup?speaker+'：':'')+reply});
   }
 
