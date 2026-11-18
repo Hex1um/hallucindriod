@@ -181,11 +181,26 @@
       +'<div class="wfoot" id="sec-foot">© 2026 '+name+' · '+tag+'</div></div>';
   }
 
+  function fallbackResults(q){
+    var sites=[['知乎','zhihu.com'],['百度百科','baike.baidu.com'],['小红书','xiaohongshu.com'],['哔哩哔哩','bilibili.com'],['CSDN','blog.csdn.net']];
+    var tpl=['{q} - 完整攻略与经验分享','{q} 怎么安排？看完这篇就够了','关于「{q}」的 10 个高赞回答','{q}｜最新整理与避坑指南','{q} 相关讨论汇总'];
+    var out=[];
+    for(var i=0;i<sites.length;i++){
+      out.push({
+        title:tpl[i].replace('{q}',q),
+        site:sites[i][1],
+        url:'https://'+sites[i][1]+'/search?q='+encodeURIComponent(q),
+        snippet:'这里汇总了关于「'+q+'」的实用信息与用户真实经验，包含注意事项、推荐清单与常见问题解答。'
+      });
+    }
+    return out;
+  }
+
   function renderSearchResults(d){
     d=d||{};
     var q=String(d.query||'');
     var total=String(d.total||'约 1,240,000 条结果');
-    var results=(d.results&&d.results.length)?d.results:[];
+    var results=(d.results&&d.results.length)?d.results:fallbackResults(q);
     var rows=results.map(function(r){
       return '<div class="sr" data-url="'+String(r.url||'').replace(/"/g,'')+'">'
         +'<div class="srt">'+String(r.title||'')+'</div>'
@@ -204,7 +219,7 @@
 
   /* ---------- 浏览器：新标签搜索页 → 输入后由 LLM 生成网页 ---------- */
   B.browser = function(){
-    var renderSrc=[renderSiteHTML,renderSearchResults,sitePalette].map(function(f){return f.toString()}).join('\n');
+    var renderSrc=[renderSiteHTML,renderSearchResults,fallbackResults,sitePalette].map(function(f){return f.toString()}).join('\n');
     var siteCSS='.site{font-family:-apple-system,"PingFang SC",sans-serif;background:#fff;color:#1a1a24}'
       +'.wnav{display:flex;justify-content:space-between;align-items:center;padding:15px 18px;background:#fff;border-bottom:1px solid #eee;position:sticky;top:0;z-index:5}'
       +'.wbrand{font-weight:800;font-size:15px;color:#222}'
