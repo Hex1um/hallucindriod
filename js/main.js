@@ -5,11 +5,9 @@
   const $=id=>document.getElementById(id);
 
   const appGrid=$('appGrid'),dock=$('dock'),drawerGrid=$('drawerGrid'),drawer=$('drawer');
-  const searchInput=$('searchInput'),drawerEmpty=$('drawerEmpty'),drawerLabel=$('drawerLabel');
-  const improviseName=$('improviseName'),controlCenter=$('controlCenter');
+  const drawerLabel=$('drawerLabel');
+  const controlCenter=$('controlCenter');
   const lockscreen=$('lockscreen'),toastEl=$('toast');
-
-  let pendingWord='';
 
   // ---------- 图标 ----------
   function iconInner(app){
@@ -59,28 +57,9 @@
     list.forEach(app=>drawerGrid.appendChild(iconEl(app,'app-item',()=>window.ENGINE.openApp(app.id))));
   }
 
-  // ---------- 抽屉搜索 ----------
-  function openDrawer(){drawer.classList.add('open');closeControlCenter();setTimeout(()=>searchInput.focus(),250)}
-  function closeDrawer(){drawer.classList.remove('open');searchInput.blur()}
-  function doSearch(){
-    const q=searchInput.value.trim();
-    if(!q){drawerEmpty.hidden=true;drawerGrid.style.display='';drawerLabel.textContent='全部应用';renderDrawerGrid(APPS);return}
-    const hit=APPS.filter(a=>(a.name+a.kw).toLowerCase().includes(q.toLowerCase()));
-    if(hit.length){
-      drawerEmpty.hidden=true;drawerGrid.style.display='';
-      drawerLabel.textContent='搜索结果';
-      renderDrawerGrid(hit);
-    }else{
-      drawerGrid.style.display='none';
-      drawerEmpty.hidden=false;
-      pendingWord=q;
-      improviseName.textContent=q;
-    }
-  }
-  function improvise(){
-    if(!pendingWord)return;
-    window.ENGINE.openApp('__generic__',pendingWord);
-  }
+  // ---------- 抽屉（无搜索栏，搜索统一在应用商店内） ----------
+  function openDrawer(){drawer.classList.add('open');closeControlCenter();if(drawerLabel)drawerLabel.textContent='全部应用'}
+  function closeDrawer(){drawer.classList.remove('open')}
 
   // ---------- 控制中心 ----------
   function openControlCenter(){controlCenter.classList.add('open');closeDrawer()}
@@ -160,10 +139,6 @@
     if(dy>60)openDrawer();
     hy=null;
   },{passive:true});
-
-  // ---------- 搜索事件 ----------
-  searchInput.addEventListener('input',doSearch);
-  $('improviseBtn').addEventListener('click',improvise);
 
   // ---------- 三键导航 ----------
   function goHome(){

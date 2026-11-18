@@ -22,7 +22,7 @@
     weather: n=>`为天气App编内容。格式：{"city":"城市名","weather":"天气现象","temp":数字,"tip":"一句天气提示，20字内"}。主题：${n}`,
     notes:   n=>`编一条中文便签。格式：{"text":"便签正文，35字内","mood":"一个emoji","sign":"署名地点"}。主题：${n}`,
     store:   n=>`编3个中文App。格式：{"apps":[{"name":"App名","desc":"一句介绍，20字内","emoji":"一个emoji"}]}。主题：${n}`,
-    browser: n=>`编一个虚构网站。格式：{"title":"网站名","headline":"吸睛大标题","desc":"60字内介绍","topic":"站点主题词"}。主题：${n}`,
+    browser: n=>`为「${n}」这个主题设计一个精致的中文品牌官网首页内容。只输出一个纯JSON对象（不要markdown、字段必须齐全）：{"siteName":"网站/品牌名，2-6字","tagline":"品牌标语，8字内","heroTitle":"吸睛大标题，14字内","heroSub":"副标题文案，26字内","cta":"按钮文字，4字内","aboutTitle":"关于板块标题，如 关于我们","about":["第一段介绍，40字内","第二段介绍，40字内"],"features":[{"icon":"一个相关emoji","title":"特色标题，4-6字","desc":"一句话介绍，18字内"},{"icon":"emoji","title":"标题","desc":"介绍"},{"icon":"emoji","title":"标题","desc":"介绍"}],"stats":[{"num":"如 120万","label":"如 用户"},{"num":"数字+单位","label":"标签"},{"num":"数字+单位","label":"标签"}]}`,
     messages:n=>`编一段4条往返聊天。格式：{"contact":"联系人称呼","msgs":[{"me":true,"text":"我发的"},{"me":false,"text":"对方回的"}]}。主题：${n}`,
     album:   n=>`编4张照片标题。格式：{"photos":[{"title":"照片标题，8字内","emoji":"一个emoji"}]}。主题：${n}`,
     fish:    n=>`编一个摸鱼检测结果。格式：{"verdict":"一句摸鱼结论，20字内","advice":"一句建议，15字内"}。主题：${n}`,
@@ -67,7 +67,7 @@
   async function plChat(model,ctx,signal){
     const r=await fetch('https://text.pollinations.ai/openai',{
       method:'POST',signal,headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({model,messages:messagesOf(ctx),temperature:ctx.temp,max_tokens:400})
+      body:JSON.stringify({model,messages:messagesOf(ctx),temperature:ctx.temp,max_tokens:ctx.maxTokens||400})
     });
     if(!r.ok)return null;
     const j=await r.json();
@@ -114,7 +114,7 @@
     if(cfg.apiKey)headers['Authorization']='Bearer '+cfg.apiKey;
     const r=await fetch(cfg.apiBase.replace(/\/$/,'')+'/chat/completions',{
       method:'POST',signal,headers,
-      body:JSON.stringify({model:cfg.model||'gpt-4o-mini',messages:messagesOf(ctx),temperature:ctx.temp,max_tokens:400})
+      body:JSON.stringify({model:cfg.model||'gpt-4o-mini',messages:messagesOf(ctx),temperature:ctx.temp,max_tokens:ctx.maxTokens||400})
     });
     if(!r.ok)return null;
     const j=await r.json();
@@ -162,7 +162,7 @@
   async function fetchHallucination(id,name){
     const cfg=D.CONFIG;
     const conf=Math.max(0,Math.min(1,Number(cfg.confidence)));
-    const ctx={sys:systemPrompt(conf),user:buildUserPrompt(id,name),temp:temperature(conf)};
+    const ctx={sys:systemPrompt(conf),user:buildUserPrompt(id,name),temp:temperature(conf),maxTokens:id==='browser'?900:400};
     window.__LLM_SOURCE='';
     window.__LLM_DIAG=[];
 

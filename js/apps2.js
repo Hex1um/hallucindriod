@@ -49,74 +49,119 @@
   }
 
   /* ---------- 浏览器：浏览器现编，网页也现编（套娃） ---------- */
-  B.browser = function(){
-    const L=(typeof window.__LLM!=='undefined'&&window.__LLM)?window.__LLM:null;
-    const topics=pickN(['月球房产','赛博算命','时间出售','AI 宠物','记忆回收','虚拟岛屿','反重力鞋','云端寺庙','失眠诊所','平行宇宙旅行社'],3);
-    if(L&&L.title){
-      topics[0]=L.topic||L.title;
-      const s=fakeSite(topics[0]);
-      s.html='<div class="site" style="font-family:-apple-system,sans-serif">'
-        +'<div class="snav"><b>'+L.title+'</b><div><span class="fl">首页</span><span class="fl">产品</span><span class="fl">关于</span></div></div>'
-        +'<div class="shero" style="background:linear-gradient(135deg,'+s.pal.a+','+s.pal.b+')"><div class="shero-e">🌐</div>'
-        +'<h1>'+(L.headline||L.title)+'</h1><p>内容由在线服务生成</p><button class="scta">立即体验 →</button></div>'
-        +'<div class="sbody"><h2>关于本站</h2><p>'+(L.desc||'本站内容实时更新。')+'</p>'
-        +'<p class="muted" style="font-size:10px;text-align:center;margin-top:24px">© 2026 '+L.title+' · 本页面为演示内容，仅供参考</p></div></div>';
-      const start=s;
-      return browserShell(start,topics);
-    }
-    const start=fakeSite(topics[0]);
-    return browserShell(start,topics);
-  };
+  // 精致官网渲染器：此函数会被 toString() 注入沙箱 iframe 内执行，禁止引用任何外部闭包变量
+  function renderSiteHTML(d){
+    d=d||{};
+    var name=d.siteName||'幻卓空间';
+    var tag=d.tagline||'让想象成为日常';
+    var hero=d.heroTitle||('欢迎来到 '+name);
+    var sub=d.heroSub||'在这里，每一次探索都有新的发现。我们用心打造，让美好自然发生。';
+    var cta=d.cta||'立即探索';
+    var aboutT=d.aboutTitle||'关于我们';
+    var about=(d.about&&d.about.length)?d.about:['我们是一支热爱创造的团队，相信技术可以让生活更有趣。','从想法到现实，我们一步步把不可能变成可能。'];
+    var feats=(d.features&&d.features.length)?d.features:[
+      {icon:'✨',title:'匠心设计',desc:'每一处细节都经过精心打磨'},
+      {icon:'🚀',title:'快速可靠',desc:'稳定服务，随时为你在线'},
+      {icon:'🌱',title:'持续进化',desc:'不断创新，带来更多惊喜'}];
+    var stats=(d.stats&&d.stats.length)?d.stats:[
+      {num:'120万',label:'用户信赖'},{num:'4.9分',label:'用户评分'},{num:'98%',label:'好评率'}];
+    var palettes=[['#667eea','#764ba2'],['#4facfe','#00f2fe'],['#f093fb','#f5576c'],['#11998e','#38ef7d'],['#fa709a','#fee140'],['#30cfd0','#330867'],['#7f00ff','#e100ff']];
+    var h=0;for(var i=0;i<name.length;i++){h=(h*31+name.charCodeAt(i))>>>0}
+    var pal=palettes[h%palettes.length];
+    var nav=['首页','产品','关于','新闻','联系'];
+    var navHTML=nav.map(function(x){return '<a class="wl">'+x+'</a>'}).join('');
+    var aboutHTML=about.map(function(p){return '<p>'+p+'</p>'}).join('');
+    var featHTML=feats.map(function(f){return '<div class="wf"><div class="wfi">'+(f.icon||'✦')+'</div><b>'+(f.title||'特色')+'</b><span>'+(f.desc||'')+'</span></div>'}).join('');
+    var statHTML=stats.map(function(s){return '<div class="ws"><b>'+(s.num||'—')+'</b><span>'+(s.label||'')+'</span></div>'}).join('');
+    return '<div class="site">'
+      +'<div class="wnav"><div class="wbrand">✦ '+name+'</div><div class="wlinks">'+navHTML+'</div></div>'
+      +'<div class="whero" style="background:linear-gradient(135deg,'+pal[0]+','+pal[1]+')">'
+        +'<div class="wtag">'+tag+'</div><h1>'+hero+'</h1><p>'+sub+'</p>'
+        +'<button class="wcta">'+cta+' →</button><div class="worb o1"></div><div class="worb o2"></div>'
+      +'</div>'
+      +'<div class="wstats">'+statHTML+'</div>'
+      +'<div class="wabout"><div class="wsec-t">'+aboutT+'</div>'+aboutHTML+'</div>'
+      +'<div class="wfeat"><div class="wsec-t">为什么选择我们</div><div class="wfg">'+featHTML+'</div></div>'
+      +'<div class="wfoot">© 2026 '+name+' · '+tag+'</div>'
+    +'</div>';
+  }
 
-  function browserShell(start,topics){
+  /* ---------- 浏览器：网页内容由 LLM 现场生成，精致官网渲染 ---------- */
+  B.browser = function(){
+    // 打开应用时父窗口已请求过一次 LLM，若拿到新结构直接作为首屏
+    var init=(typeof window.__LLM!=='undefined'&&window.__LLM&&window.__LLM.siteName)?window.__LLM:null;
+    var initData=init?JSON.stringify(init):'null';
+    var initTopic=init?(init.siteName||'幻卓空间'):'幻卓空间';
+    var renderSrc=renderSiteHTML.toString();
+    var siteCSS='.site{font-family:-apple-system,"PingFang SC",sans-serif;background:#fff;color:#1a1a24}'
+      +'.wnav{display:flex;justify-content:space-between;align-items:center;padding:15px 18px;background:#fff;border-bottom:1px solid #eee}'
+      +'.wbrand{font-weight:800;font-size:15px;color:#222}'
+      +'.wlinks{display:flex;gap:12px;flex-wrap:wrap}.wl{font-size:11px;color:#777}'
+      +'.whero{position:relative;overflow:hidden;padding:52px 24px 46px;color:#fff;text-align:center}'
+      +'.wtag{display:inline-block;font-size:11px;letter-spacing:2px;opacity:.95;border:1px solid rgba(255,255,255,.55);border-radius:999px;padding:4px 12px;margin-bottom:16px}'
+      +'.whero h1{font-size:29px;line-height:1.3;margin:0 0 12px;font-weight:800;position:relative;z-index:1}'
+      +'.whero p{font-size:13px;line-height:1.7;opacity:.92;max-width:320px;margin:0 auto 20px;position:relative;z-index:1}'
+      +'.wcta{border:none;background:#fff;color:#222;border-radius:999px;padding:11px 24px;font-size:13px;font-weight:700;cursor:pointer;position:relative;z-index:1;box-shadow:0 6px 20px rgba(0,0,0,.15)}'
+      +'.worb{position:absolute;border-radius:50%;background:rgba(255,255,255,.12)}'
+      +'.worb.o1{width:180px;height:180px;top:-60px;left:-50px}.worb.o2{width:130px;height:130px;bottom:-50px;right:-30px}'
+      +'.wstats{display:flex;background:#fafaff;padding:22px 10px;border-bottom:1px solid #f0f0f5}'
+      +'.ws{flex:1;text-align:center;border-right:1px solid #e8e8f0}.ws:last-child{border-right:none}'
+      +'.ws b{display:block;font-size:20px;color:#4f46e5}.ws span{font-size:10px;color:#999}'
+      +'.wabout,.wfeat{padding:26px 20px}'
+      +'.wsec-t{font-size:18px;font-weight:800;margin:0 0 16px;color:#1a1a24;position:relative;padding-left:12px}'
+      +'.wsec-t:before{content:"";position:absolute;left:0;top:3px;bottom:3px;width:4px;background:#6366f1;border-radius:2px}'
+      +'.wabout p{font-size:12.5px;line-height:1.9;color:#555;margin:0 0 10px}'
+      +'.wfg{display:grid;grid-template-columns:repeat(3,1fr);gap:9px}'
+      +'.wf{background:#f7f7fb;border-radius:14px;padding:14px 10px;text-align:center}'
+      +'.wfi{font-size:26px;margin-bottom:8px}.wf b{display:block;font-size:11.5px;color:#222;margin-bottom:5px}'
+      +'.wf span{font-size:9.5px;color:#8a8a99;line-height:1.5;display:block}'
+      +'.wfoot{text-align:center;font-size:10px;color:#aaa;padding:20px;background:#fafaff}'
+      +'.wload{padding:70px 20px;text-align:center;color:#666;font-size:13px}'
+      +'.wload .sp{font-size:34px;animation:spin 1.2s linear infinite;display:inline-block}'
+      +'@keyframes spin{to{transform:rotate(360deg)}}';
     return shell({
       title:'浏览器', icon:'🌐', accent:'#38bdf8',
       css:'#appFrameHost{height:100%;display:flex;flex-direction:column}'
         +'.bbar{display:flex;gap:6px;align-items:center;padding:10px 12px;background:#171824;border-bottom:1px solid rgba(255,255,255,.06)}'
-        +'.bbar button{border:none;background:rgba(255,255,255,.08);color:#fff;width:30px;height:30px;border-radius:9px;cursor:pointer;flex-shrink:0}'
+        +'.bbar button{border:none;background:rgba(255,255,255,.08);color:#fff;width:30px;height:30px;border-radius:9px;cursor:pointer;flex-shrink:0;font-size:15px}'
         +'.url{flex:1;display:flex;align-items:center;gap:6px;background:rgba(255,255,255,.09);border-radius:10px;padding:7px 10px;font-size:11px;color:#9aa0b5;min-width:0}'
         +'.url input{flex:1;background:none;border:none;outline:none;color:#fff;font-size:11px;min-width:0;width:100%}'
-        +'.web{flex:1;overflow-y:auto;background:#fff;color:#111;scrollbar-width:none}.web::-webkit-scrollbar{display:none}'
-        +'.site{font-family:-apple-system,"PingFang SC",sans-serif}'
-        +'.snav{display:flex;justify-content:space-between;align-items:center;padding:14px 16px;font-size:12px;background:#fff;border-bottom:1px solid #eee;gap:8px;flex-wrap:wrap}'
-        +'.snav b{color:#111}.snav div{display:flex;gap:9px;flex-wrap:wrap}.fl{color:#666;font-size:10px}'
-        +'.shero{padding:38px 22px;color:#fff;text-align:center}.shero-e{font-size:56px}.shero h1{font-size:26px;margin:10px 0 6px}.shero p{font-size:12px;opacity:.9}.scta{border:none;background:#fff;color:#111;border-radius:999px;padding:9px 18px;font-size:12px;font-weight:700;margin-top:8px;cursor:pointer}'
-        +'.sbody{padding:20px 18px}.sbody h2{font-size:18px}.sbody p{font-size:12.5px;line-height:1.8;color:#444}'
-        +'.scards{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:18px 0}.sc{background:#f5f5f8;border-radius:12px;padding:12px 10px}.sc b{font-size:11px;display:block}.sc span{font-size:9px;color:#888;line-height:1.5}'
-        +'.suggest{padding:14px 16px}.suggest .sg{padding:11px 12px;background:rgba(255,255,255,.05);border-radius:12px;margin-bottom:8px;font-size:12px;cursor:pointer}'
-        +'.suggest h4{color:#8b90a5;font-size:11px;margin:0 0 12px}',
+        +'.web{flex:1;overflow-y:auto;background:#fff;scrollbar-width:none}.web::-webkit-scrollbar{display:none}'
+        +siteCSS,
       html:'<div id="appFrameHost"><div class="bbar">'
-        +'<button id="back">‹</button><button id="fwd">›</button><button id="home">⌂</button>'
-        +'<div class="url">🔒 <input id="urlIn" value="https://'+start.title.replace(/\s/g,'')+'.xyz" placeholder="输入网址或搜索关键词"></div>'
-        +'<button id="go">↻</button></div><div class="web" id="web">'+start.html+'</div></div>',
-      js:'var topics='+JSON.stringify(topics)+',history=[],hidx=-1;'
-        +'var web=document.getElementById("web"),urlIn=document.getElementById("urlIn");'
-        +'function build(topic){'
-        +'var palArgs='+JSON.stringify(start.pal)+';'
-        // fakeSite 逻辑内联（沙箱内不可访问外部函数）
-        +'var adjs='+JSON.stringify(WORDS.adjectives)+',nouns='+JSON.stringify(WORDS.nouns)+',ideas='+JSON.stringify(WORDS.appIdeas)+',cities='+JSON.stringify(WORDS.cities)+',lands='+JSON.stringify(WORDS.landmarks)+',descs='+JSON.stringify(WORDS.storeDesc)+';'
-        +'function P(a){return a[Math.floor(Math.random()*a.length)]}'
-        +'function pal(){var hs=[265,200,320,160,25,340,230,90],h=hs[Math.floor(Math.random()*hs.length)];return {a:"hsl("+h+" 85% 62%)",b:"hsl("+((h+40)%360)+" 85% 55%)"}}'
-        +'var p=pal(),adj=P(adjs),noun=P(nouns),title=P([topic+"官网",topic+" · 全球领先",P(adjs)+topic+"网","关于"+topic+"的一切"]);'
-        +'var emos=["🛸","🌙","🪐","💎","🌈","🧊","🔮"];'
-        +'var links=["首页","产品","关于我们","新闻","招聘","联系我们"].map(function(x){return "<span class=fl>"+x+"</span>"}).join("");'
-        +'var paras=["欢迎来到"+title+"。我们是一家专注于"+adj+noun+"的科技企业，致力于为您带来"+P(adjs)+"的体验。",'
-        +'"我们的使命是让每一个"+noun+"都能拥有自己的"+P(nouns)+"。已服务超过 "+(1+Math.floor(Math.random()*999))+" 万用户（数据由 AI 估算）。",'
-        +'"成立于 "+(2019+Math.floor(Math.random()*7))+" 年，总部位于"+P(cities)+"，在"+P(lands)+"设有分部。"];'
-        +'var cards="";for(var i=0;i<3;i++){cards+="<div class=sc><b>"+P(ideas)+"</b><span>"+P(descs)+"</span></div>"}'
-        +'return "<div class=site><div class=snav><b>"+title+"</b><div>"+links+"</div></div>"'
-        +'+"<div class=shero style=\\"background:linear-gradient(135deg,"+p.a+","+p.b+")\\"><div class=shero-e>"+P(emos)+"</div>"'
-        +'+"<h1>"+adj+topic+"</h1><p>在"+P(adjs)+"的世界里，拥有一个"+noun+"</p><button class=scta>立即体验 →</button></div>"'
-        +'+"<div class=sbody><h2>关于我们</h2>"+paras.map(function(x){return "<p>"+x+"</p>"}).join("")'
-        +'+"<div class=scards>"+cards+"</div><p style=\\"font-size:10px;text-align:center;color:#999;margin-top:24px\\">© 2026 "+title+" · 本页面为演示内容，仅供参考</p></div></div>";}'
-        +'function nav(topic){var kw=topic.trim()||P(topics);urlIn.value="https://"+kw.replace(/\\s/g,"")+".xyz";web.innerHTML=build(kw);web.scrollTop=0;}'
-        +'document.getElementById("go").onclick=function(){nav(urlIn.value.replace(/^https?:\\/\\//,"").replace(/\\.xyz$/, ""))};'
+        +'<button id="back" title="后退">‹</button><button id="fwd" title="前进">›</button><button id="home" title="主页">⌂</button>'
+        +'<div class="url">🔒 <input id="urlIn" value="https://www.'+initTopic+'.com" placeholder="输入网址或搜索关键词"></div>'
+        +'<button id="go" title="刷新">↻</button></div><div class="web" id="web">'+(init?renderSiteHTML(init):'<div class="wload"><div class="sp">✦</div><div>正在生成网页…</div></div>')+'</div></div>',
+      js:'var renderSiteHTML='+renderSrc+';'
+        +'var initData='+initData+';var curTopic='+JSON.stringify(initTopic)+';'
+        +'var urlIn=document.getElementById("urlIn"),web=document.getElementById("web");'
+        +'var hist=['+JSON.stringify(initTopic)+'],hi=0,nonce=0,lastNonce=0;'
+        +'function setUrl(t){urlIn.value="https://www."+(t||"site")+".com"}'
+        +'function showLoad(){web.innerHTML="<div class=wload><div class=sp>✦</div><div>正在生成网页…</div></div>";web.scrollTop=0}'
+        +'function nav(topic,push){'
+        +'  topic=String(topic||"").trim();if(!topic)topic=curTopic;'
+        +'  curTopic=topic;setUrl(topic);showLoad();'
+        +'  if(push){hist=hist.slice(0,hi+1);hist.push(topic);hi=hist.length-1}'
+        +'  lastNonce=++nonce;'
+        +'  parent.postMessage({type:"webgen",topic:topic,nonce:lastNonce},"*");'
+        +'}'
+        +'window.addEventListener("message",function(e){'
+        +'  if(!e.data||e.data.type!=="webdata")return;'
+        +'  if(e.data.nonce&&e.data.nonce!==lastNonce)return;'
+        +'  var d=e.data.data;'
+        +'  if(d&&d.siteName){curTopic=d.siteName;web.innerHTML=renderSiteHTML(d)}'
+        +'  else{web.innerHTML=renderSiteHTML(null)}'
+        +'  web.scrollTop=0;'
+        +'});'
+        +'document.getElementById("go").onclick=function(){nav(urlIn.value.replace(/^https?:\\/\\//,"").replace(/^www\\./,"").replace(/\\.com$/, ""),false)};'
         +'urlIn.onkeydown=function(e){if(e.key==="Enter"){document.getElementById("go").click();urlIn.blur()}};'
-        +'document.getElementById("home").onclick=function(){nav(P(topics))};'
-        +'document.getElementById("back").onclick=function(){nav(P(topics))};'
-        +'document.getElementById("fwd").onclick=function(){nav(P(topics))};'
+        +'document.getElementById("home").onclick=function(){nav("幻卓空间",true)};'
+        +'document.getElementById("back").onclick=function(){if(hi>0){hi--;nav(hist[hi],false)}};'
+        +'document.getElementById("fwd").onclick=function(){if(hi<hist.length-1){hi++;nav(hist[hi],false)}};'
+        +'if(initData===null||initData==="null"){nav(curTopic,false)}'
     });
   };
+
 
   /* ---------- 相机：拍出幻觉照片 ---------- */
   B.camera = function(){

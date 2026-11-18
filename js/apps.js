@@ -297,7 +297,7 @@
     });
   };
 
-  /* ---------- 应用商店：满屏不存在的应用 ---------- */
+  /* ---------- 应用商店：真实搜索 + LLM 现场生成，搜什么都能搜到 ---------- */
   B.store = function(){
     const L=(typeof window.__LLM!=='undefined'&&window.__LLM)?window.__LLM:null;
     const llms=L&&Array.isArray(L.apps)?L.apps:null;
@@ -308,25 +308,63 @@
       const p=neonPalette();
       const desc=llms&&llms[i]&&llms[i].desc?llms[i].desc:pick(WORDS.storeDesc);
       const emo=llms&&llms[i]&&llms[i].emoji?llms[i].emoji:emos[(i+randInt(0,5))%emos.length];
-      cards+='<div class="sc"><div class="si" style="background:linear-gradient(135deg,'+p.a+','+p.b+')">'+emo+'</div>'
+      cards+='<div class="sc" data-name="'+name+'" data-desc="'+desc+'" data-emoji="'+emo+'"><div class="si" style="background:linear-gradient(135deg,'+p.a+','+p.b+')">'+emo+'</div>'
         +'<div class="sinfo"><b>'+name+'</b><span>'+desc+'</span>'
         +'<small>★ '+(4+Math.random()).toFixed(1)+' · '+randInt(1,99)+' 万下载</small></div>'
-        +'<button class="inst" onclick="this.textContent=\'✓已装\';this.disabled=true">获取</button></div>';
+        +'<button class="inst">获取</button></div>';
     });
+    // 内联卡片生成逻辑（沙箱内无法访问外部函数）
+    const cardJS=
+      'var emos='+JSON.stringify(emos)+',descs='+JSON.stringify(WORDS.storeDesc)+',ideas='+JSON.stringify(WORDS.appIdeas)+';'
+      +'function pal(){var hs=[265,200,320,160,25,340,230,90],h=hs[Math.floor(Math.random()*hs.length)];return {a:"hsl("+h+" 85% 62%)",b:"hsl("+((h+40)%360)+" 85% 55%)"}}'
+      +'function P(a){return a[Math.floor(Math.random()*a.length)]}'
+      +'function cardHTML(name,desc,emo){var p=pal();return "<div class=sc data-name=\\""+name+"\\" data-desc=\\""+desc+"\\" data-emoji=\\""+emo+"\\"><div class=si style=\\"background:linear-gradient(135deg,"+p.a+","+p.b+")\\">"+emo+"</div>"'
+      +'+"<div class=sinfo><b>"+name+"</b><span>"+desc+"</span><small>★ "+(4+Math.random()).toFixed(1)+" · "+(1+Math.floor(Math.random()*99))+" 万下载</small></div><button class=inst>获取</button></div>"}'
+      +'function bindInstall(){document.querySelectorAll(".sc .inst").forEach(function(b){b.onclick=function(){if(this.textContent==="✓已装")return;this.textContent="✓已装";var nm=this.parentNode.parentNode.getAttribute("data-name");parent.postMessage({type:"openapp",id:"__generic__",name:nm},"*")}})}';
     return shell({
       title:'应用商店', icon:'🛍️', accent:'#818cf8',
-      css:'.st{padding:16px}.st h3{margin:2px 2px 14px;font-size:15px}'
-        +'.srch{padding:11px 14px;background:rgba(255,255,255,.08);border-radius:14px;font-size:12px;color:#9aa0b5;margin-bottom:14px}'
+      css:'.st{padding:16px}.st h3{margin:2px 2px 12px;font-size:15px}'
+        +'.srch{display:flex;gap:8px;margin-bottom:14px}'
+        +'.srch input{flex:1;min-width:0;padding:11px 14px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.1);border-radius:14px;font-size:12px;color:#fff;outline:none}'
+        +'.srch input::placeholder{color:#8b90a5}'
+        +'.srch button{border:none;border-radius:14px;padding:0 16px;background:rgba(129,140,248,.28);color:#c7d2fe;font-size:12px;cursor:pointer}'
+        +'.stlabel{font-size:11px;color:#8b90a5;margin:0 2px 8px}'
         +'.sc{display:flex;align-items:center;gap:12px;padding:12px 4px;border-bottom:1px solid rgba(255,255,255,.05)}'
         +'.si{width:48px;height:48px;border-radius:13px;display:flex;align-items:center;justify-content:center;font-size:25px;flex-shrink:0}'
         +'.sinfo{flex:1;min-width:0}.sinfo b{font-size:13px}.sinfo span{display:block;font-size:10px;color:#8b90a5;margin:2px 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}'
         +'.sinfo small{font-size:10px;color:#fbbf24}'
         +'.inst{border:none;border-radius:999px;padding:7px 15px;font-size:12px;background:rgba(129,140,248,.2);color:#c7d2fe;cursor:pointer}'
-        +'.inst:disabled{opacity:.6}'
-        +'.foot{text-align:center;color:#6a6e82;font-size:11px;margin-top:18px}',
-      html:'<div class="st"><h3>今日推荐</h3><div class="srch">🔍 搜索应用</div>'+cards
-        +'<div class="foot">应用均由官方上架 · 安全检测通过</div></div>'
+        +'.foot{text-align:center;color:#6a6e82;font-size:11px;margin-top:18px}'
+        +'.sload{text-align:center;color:#8b90a5;font-size:12px;padding:30px 0}.sload .sp{font-size:26px;animation:spn 1.2s linear infinite;display:inline-block}'
+        +'@keyframes spn{to{transform:rotate(360deg)}}',
+      html:'<div class="st"><h3>应用商店</h3>'
+        +'<div class="srch"><input id="storeQ" placeholder="搜索或创建一个应用" autocomplete="off"><button id="storeGo">搜索</button></div>'
+        +'<div class="stlabel" id="stLabel">今日推荐</div>'
+        +'<div id="stList">'+cards+'</div>'
+        +'<div class="foot">应用均由官方上架 · 安全检测通过</div></div>',
+      js:cardJS
+        +'var q=document.getElementById("storeQ"),list=document.getElementById("stList"),lbl=document.getElementById("stLabel"),nonce=0,lastNonce=0;'
+        +'bindInstall();'
+        +'function doSearch(){'
+        +'  var kw=q.value.trim();if(!kw)return;'
+        +'  lbl.textContent="搜索「"+kw+"」";'
+        +'  list.innerHTML="<div class=sload><div class=sp>✦</div><div>正在寻找 / 生成应用…</div></div>";'
+        +'  lastNonce=++nonce;'
+        +'  parent.postMessage({type:"storegen",topic:kw,nonce:lastNonce},"*");'
+        +'}'
+        +'document.getElementById("storeGo").onclick=doSearch;'
+        +'q.onkeydown=function(e){if(e.key==="Enter"){doSearch();q.blur()}};'
+        +'window.addEventListener("message",function(e){'
+        +'  if(!e.data||e.data.type!=="storedata")return;'
+        +'  if(e.data.nonce&&e.data.nonce!==lastNonce)return;'
+        +'  var kw=e.data.keyword||"应用",apps=e.data.data&&e.data.data.apps;'
+        +'  var html="";'
+        +'  if(apps&&apps.length){apps.forEach(function(a){html+=cardHTML(String(a.name||kw),String(a.desc||"一款新奇的应用"),String(a.emoji||P(emos)))})}'
+        +'  html=cardHTML(kw,"为你现场生成的应用 · 点击获取即可打开","✦")+html;'
+        +'  list.innerHTML=html;bindInstall();'
+        +'});'
     });
   };
+
 
 })();

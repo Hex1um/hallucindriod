@@ -148,11 +148,28 @@
     if(isGeneric)window.HOS.toast('✦ 已重新幻觉一个版本');
   }
 
+  // 通用：iframe 请求父窗口用 LLM 现场生成内容（browser / store）
+  async function llmGen(kind,topic,nonce){
+    let data=null;
+    if(window.LLM){
+      try{ data=await window.LLM.fetchHallucination(kind,topic); }catch(e){ data=null; }
+    }
+    if(frame&&frame.contentWindow){
+      const msg=kind==='store'
+        ? {type:'storedata',data:data,keyword:topic,nonce:nonce}
+        : {type:'webdata',data:data,topic:topic,nonce:nonce};
+      try{ frame.contentWindow.postMessage(msg,'*'); }catch(e){}
+    }
+  }
+
   // 接收 iframe 内部消息
   window.addEventListener('message',function(e){
     if(!e.data||typeof e.data!=='object')return;
     if(e.data.type==='close')closeApp();
     else if(e.data.type==='regen')regen();
+    else if(e.data.type==='webgen')llmGen('browser',e.data.topic||'幻卓空间',e.data.nonce);
+    else if(e.data.type==='storegen')llmGen('store',e.data.topic||'应用',e.data.nonce);
+    else if(e.data.type==='openapp'){ appLayer.hidden=true; openApp(e.data.id||'__generic__',e.data.name||'应用',{}); }
     else if(e.data.type==='config'&&e.data.cfg){
       // 置信度/API 配置：原地更新全局 CONFIG 并持久化
       Object.assign(D.CONFIG,e.data.cfg);
