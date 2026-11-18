@@ -129,16 +129,12 @@
     toast(label+(t.classList.contains('on')?'已开启':'已关闭'));
   }));
 
-  // ---------- 桌面手势：上滑进抽屉 ----------
+  // ---------- 桌面手势：上滑不再打开「全部应用」抽屉 ----------
+  // 按用户要求：上拉时不展示全部应用列表。上滑手势不触发任何面板。
   let hy=null;
   const home=$('homeScreen');
   home.addEventListener('touchstart',e=>{hy=e.touches[0].clientY},{passive:true});
-  home.addEventListener('touchend',e=>{
-    if(hy===null)return;
-    const dy=hy-e.changedTouches[0].clientY;
-    if(dy>60)openDrawer();
-    hy=null;
-  },{passive:true});
+  home.addEventListener('touchend',e=>{hy=null},{passive:true});
 
   // ---------- 三键导航 ----------
   function goHome(){
