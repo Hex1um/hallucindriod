@@ -1,4 +1,4 @@
-/* ============ 幻卓 Huandroid · 幻觉应用生成器（二）============ */
+/* ============ Hallucindriod · 幻卓 · 幻觉应用生成器（二）============ */
 (function(){
   const D=window.OS_DATA;
   const {pick,pickN,chance,randInt,neonPalette,WORDS}=D;
@@ -666,7 +666,7 @@ render();`;
   B.settings = function(){
     const L=(typeof window.__LLM!=='undefined'&&window.__LLM)?window.__LLM:null;
     const ver=pick(WORDS.systemVer), city=pick(WORDS.cities);
-    const device=(L&&L.device)||('幻卓 Huandroid · '+pick(['Pro','Ultra','SE']));
+    const device=(L&&L.device)||('Hallucindriod · '+pick(['Pro','Ultra','SE']));
     const comment=(L&&L.comment)||'系统运行流畅';
     const cfg=(typeof window.__CFG!=='undefined'&&window.__CFG)?window.__CFG:{confidence:0.35,apiBase:'',apiKey:'',model:'openai-fast'};
     const conf=Number(cfg.confidence);
@@ -728,7 +728,7 @@ render();`;
         +'<div class="grp card"><div class="gl">🔄 数据刷新</div>'
         +'<div class="refresh-head"><span>重新生成应用内容</span><button class="rall" id="refreshAll">刷新全部</button></div>'
         +refreshRows+'</div>'
-        +'<div class="about card"><div class="lg">✦</div><b>幻卓 Huandroid</b>'
+        +'<div class="about card"><div class="lg">✦</div><b>Hallucindriod</b>'
         +'一台会自己生成应用的安卓手机<br>应用由 AI 实时生成<br>version '+ver+'</div></div>',
       js:'var cr=document.getElementById("cr"),cv=document.getElementById("cv"),cm=document.getElementById("cm"),cd=document.getElementById("cd");'
         +'function mode(v){if(v>=0.8)return ["🌍 真实模式","#4ade80","内容贴近真实世界，数据合理可信，AI 保持克制。"];'
@@ -893,7 +893,7 @@ render();`;
     const feedHtml=feed.slice(0,6).map((f,i)=>{
       const emo=f.emoji||pick(['🍩','🍔','🍜','🥩','🍰','🍤']);
       const bg=['linear-gradient(150deg,#3f2a12,#7c4a12)','linear-gradient(150deg,#3a1e2a,#7a2d4a)','linear-gradient(150deg,#122f3a,#1e5a6e)','linear-gradient(150deg,#2a1c3f,#4c2d7a)'][i%4];
-      return '<div class="dfcard"><div class="dfimg" style="background:'+bg+'">'+emo+'</div>'
+      return '<div class="dfcard" data-feed="'+i+'"><div class="dfimg" style="background:'+bg+'">'+emo+'</div>'
         +'<div class="dfbody"><div class="dftitle">'+String(f.title||'')+'</div>'
         +'<div class="dfmeta"><span class="av">'+(String(f.author||'用户').slice(0,1))+'</span>'
         +'<span>'+String(f.author||'用户')+'</span><span class="lv">'+String(f.level||'Lv1')+'</span>'
@@ -932,25 +932,82 @@ render();`;
         +'.dtab .ti{display:block;font-size:18px;margin-bottom:1px}'
         +'.dtab.on{color:#fb923c}'
         +'.dtab.ctr .ti{width:44px;height:34px;line-height:34px;border-radius:999px;background:linear-gradient(135deg,#fb923c,#f97316);color:#fff;font-size:14px;margin:0 auto 1px}'
-        +'.dtab .bdg{display:inline-block;background:#ef4444;color:#fff;border-radius:999px;font-size:8px;padding:0 4px;margin-left:1px;transform:translateY(-2px)}',
+        +'.dtab .bdg{display:inline-block;background:#ef4444;color:#fff;border-radius:999px;font-size:8px;padding:0 4px;margin-left:1px;transform:translateY(-2px)}'
+        +'.dcat{cursor:pointer}.dcat:active .ci{background:rgba(251,191,36,.22)}'
+        +'.dfcard:active{opacity:.8}.dcard2{cursor:pointer}.dcard2:active{opacity:.8}'
+        +'.dov{position:fixed;inset:0;background:#0f1115;z-index:80;display:flex;flex-direction:column;transform:translateX(100%);transition:transform .22s}'
+        +'.dov.on{transform:none}'
+        +'.dovh{height:50px;display:flex;align-items:center;gap:10px;padding:0 14px;border-bottom:1px solid rgba(255,255,255,.06);flex-shrink:0}'
+        +'.dovh button{border:none;background:none;color:#fb923c;font-size:24px;cursor:pointer;padding:0 4px}'
+        +'.dovh b{font-size:14.5px}'
+        +'.dovb{flex:1;overflow-y:auto;padding:16px;scrollbar-width:none}.dovb::-webkit-scrollbar{display:none}'
+        +'.dshop{display:flex;gap:12px;padding:12px 0;border-bottom:1px solid rgba(255,255,255,.05)}'
+        +'.dshop .lg{width:54px;height:54px;border-radius:14px;background:linear-gradient(135deg,#fbbf24,#f59e0b);display:flex;align-items:center;justify-content:center;font-size:26px;flex-shrink:0}'
+        +'.dshop .in{flex:1;min-width:0}.dshop b{font-size:14px}'
+        +'.dshop .mt{font-size:10.5px;color:#8b90a5;margin-top:4px}'
+        +'.dnote img{width:100%;border-radius:14px;display:block;margin-bottom:12px}'
+        +'.dnote h3{margin:0 0 8px;font-size:15px}.dnote p{margin:0 0 10px;font-size:12.5px;color:#b9bccb;line-height:1.85}',
       html:'<div class="dl">'
         +'<div class="dtop"><span class="t">关注</span><span class="loc">'+city+' <span style="font-size:9px">▾</span></span>'
         +'<span class="t on">附近</span><span class="t">热点</span><span class="coin">🪙 得金币</span></div>'
         +'<div class="dsearch"><span style="font-size:13px">⌕</span><span class="s">搜索店铺、美食、景点</span><span class="cam">📷</span><button class="go">搜索</button></div>'
-        +'<div class="dcats">'+cats.map(c=>'<div class="dcat"><div class="ci">'+c[0]+'</div>'+c[1]+'</div>').join('')+'</div>'
-        +'<div class="dduo"><div class="dcard2"><div class="th">'+String(rank.title||'点评榜单')+' ›</div>'
+        +'<div class="dcats">'+cats.map(c=>'<div class="dcat" data-cat="'+c[1]+'"><div class="ci">'+c[0]+'</div>'+c[1]+'</div>').join('')+'</div>'
+        +'<div class="dduo"><div class="dcard2" id="rankCard"><div class="th">'+String(rank.title||'点评榜单')+' ›</div>'
         +'<div class="it">'+String(rank.item||'')+'</div><div class="meta"><span style="color:#fbbf24">'+String(rank.tag||'')+'</span><span>'+String(rank.dist||'')+'</span></div></div>'
-        +'<div class="dcard2"><div class="th">免费试 ›</div><div class="it">'+String(free)+'</div>'
+        +'<div class="dcard2" id="freeCard"><div class="th">免费试 ›</div><div class="it">'+String(free)+'</div>'
         +'<div class="meta"><span>🎁 报名中</span><span style="margin-left:auto">›</span></div></div></div>'
         +'<div class="dfeed">'+feedHtml+'</div>'
         +'<div class="dtabs"><div class="dtab on"><span class="ti">🏠</span>首页</div>'
         +'<div class="dtab"><span class="ti">🗺️</span>地图</div>'
         +'<div class="dtab ctr"><span class="ti">✎ 打卡</span></div>'
         +'<div class="dtab"><span class="ti">💬</span>消息<span class="bdg">99+</span></div>'
-        +'<div class="dtab"><span class="ti">👤</span>我的</div></div></div>',
-      js:'document.querySelectorAll(".dtab").forEach(function(t){t.onclick=function(){'
-        +'document.querySelectorAll(".dtab").forEach(function(x){x.classList.remove("on")});this.classList.add("on")}});'
-        +'document.querySelector(".dsearch .go").onclick=function(){parent.postMessage({type:"openapp",id:"delivery",name:"袋鼠外卖"},"*")};'
+        +'<div class="dtab"><span class="ti">👤</span>我的</div></div><div class="dov" id="dov"></div></div>',
+      js:'var dov=document.getElementById("dov");'
+        +'var RANKTITLE='+JSON.stringify(String(rank.title||"点评榜单"))+',FREETXT='+JSON.stringify(String(free))+';'
+        +'var FEEDS='+JSON.stringify(feed.slice(0,6)).replace(/</g,'\\u003c')+';'
+        +'function esc(s){return String(s==null?"":s).replace(/[&<>"]/g,function(c){return ({"&":"&amp;","<":"&lt;",">":"&gt;"})[c]})}'
+        +'function closeDov(){dov.classList.remove("on")}'
+        +'function openDov(title,inner){'
+        +'  dov.innerHTML="<div class=\\"dovh\\"><button id=\\"dovbk\\">\\u2039</button><b>"+esc(title)+"</b></div><div class=\\"dovb\\">"+inner+"</div>";'
+        +'  dov.classList.add("on");document.getElementById("dovbk").onclick=closeDov;'
+        +'}'
+        +'function shopRow(nm,food,rate,dist){'
+        +'  return "<div class=\\"dshop\\"><div class=\\"lg\\">🍽️</div><div class=\\"in\\"><b>"+esc(nm)+"</b>"'
+        +'    +"<div class=\\"mt\\">★ "+esc(rate)+" · "+esc(dist)+" · 起送 ¥20</div>"'
+        +'    +"<div class=\\"mt\\">招牌："+esc(food)+"</div></div></div>";'
+        +'}'
+        +'document.querySelectorAll(".dcat").forEach(function(c){c.onclick=function(){'
+        +'  var k=this.getAttribute("data-cat");'
+        +'  var foods=["招牌套餐","人气单品","限时特惠","店长推荐"];'
+        +'  var body="";for(var i=0;i<4;i++){body+=shopRow(k+"精选"+(i+1)+"号店",foods[i],(4+i*0.2).toFixed(1),(0.3+i*0.8).toFixed(1)+"km")}'
+        +'  openDov(k,body+"<div style=\\"text-align:center;color:#6b7080;font-size:11px;padding:14px 0\\">以上为 "+esc(k)+" 分类下的推荐</div>");'
+        +'}});'
+        +'var rc=document.getElementById("rankCard");if(rc)rc.onclick=function(){'
+        +'  var names=["隐世小馆","巷口面家","深夜食堂","老地方","转角咖啡"],mds=["🥇","🥈","🥉","🏅","🏅"];'
+        +'  var b="";for(var i=0;i<5;i++){b+="<div class=\\"dshop\\"><div class=\\"lg\\">"+mds[i]+"</div><div class=\\"in\\"><b>第"+(i+1)+"名 · "+esc(names[i])+"</b><div class=\\"mt\\">★ "+(5-i*0.1).toFixed(1)+" · 好评榜</div></div></div>"}'
+        +'  openDov(RANKTITLE,b);'
+        +'};'
+        +'var fc=document.getElementById("freeCard");if(fc)fc.onclick=function(){'
+        +'  openDov("免费试","<div style=\\"font-size:12.5px;color:#c9cad6;line-height:2\\">🎁 "+esc(FREETXT)+"<br><br>参与方式：<br>· 报名后到店体验<br>· 写下真实体验评价<br>· 优质评价可获得下次免单</div>");'
+        +'};'
+        +'document.querySelectorAll(".dfcard").forEach(function(f){f.onclick=function(){'
+        +'  var i=this.getAttribute("data-feed"),F=FEEDS[+i]||{};'
+        +'  openDov("笔记详情","<div class=\\"dnote\\"><img src=\\"https://picsum.photos/seed/dlv"+i+"/520/400\\" onerror=\\"this.remove()\\">"'
+        +'    +"<h3>"+esc(F.title||"")+"</h3><p>"+esc(F.author||"用户")+" · "+esc(F.level||"Lv1")+"</p>"'
+        +'    +"<p>这家店是真的值得来。和朋友一起点了几道招牌，味道很稳，环境也舒服，服务态度很好。</p>"'
+        +'    +"<p style=\\"color:#fb923c\\">♡ "+esc(String(F.likes||0))+" 人觉得有用</p></div>");'
+        +'}});'
+        +'document.querySelectorAll(".dtab").forEach(function(t){t.onclick=function(){'
+        +'  document.querySelectorAll(".dtab").forEach(function(x){x.classList.remove("on")});this.classList.add("on");'
+        +'  var k=this.textContent.trim();'
+        +'  if(k.indexOf("首页")>=0){closeDov();return}'
+        +'  if(k.indexOf("地图")>=0){openDov("附近地图","<div style=\\"height:230px;border-radius:14px;background:linear-gradient(135deg,#16324a,#0e1f30);display:flex;align-items:center;justify-content:center;font-size:52px\\">🗺️</div><div style=\\"text-align:center;color:#8b90a5;font-size:11.5px;margin-top:12px\\">正在定位附近商家…</div>");return}'
+        +'  if(k.indexOf("打卡")>=0){openDov("打卡","<div style=\\"font-size:12.5px;color:#c9cad6;line-height:2\\">📍 今日打卡 0 次<br>· 到店签到可获积分<br>· 连续打卡 7 天送优惠券</div>");return}'
+        +'  if(k.indexOf("消息")>=0){openDov("消息","<div style=\\"font-size:12.5px;color:#c9cad6;line-height:2\\">· 您有一条新的优惠券到账<br>· 关注的店铺上新了<br>· 订单已完成，去评价</div>");return}'
+        +'  openDov("我的","<div style=\\"font-size:12.5px;color:#c9cad6;line-height:2.1\\">👤 幻卓用户<br>🧾 我的订单 3<br>🎟️ 优惠券 2<br>⭐ 我的收藏 8<br>⚙️ 设置</div>");'
+        +'}});'
+        +'var srchBox=document.querySelector(".dsearch");'
+        +'if(srchBox)srchBox.onclick=function(){openDov("搜索","<div style=\\"font-size:12.5px;color:#c9cad6;line-height:2\\">热门搜索<br><br>· 附近好吃的<br>· 咖啡<br>· 火锅<br>· 甜点<br>· 夜宵</div>")};'
     });
   };
 

@@ -1,4 +1,4 @@
-# 幻卓 Huandroid
+# Hallucindriod · 幻卓
 
 > 一台会现场生成应用的安卓手机 —— 纯前端、零构建的交互演示。
 
@@ -60,4 +60,4 @@ js/main.js        主程序
 
 ## 在线预览
 
-<https://hex1um.github.io/huandroid/>
+<https://hex1um.github.io/hallucindriod/>

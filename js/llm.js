@@ -1,4 +1,4 @@
-/* ============ 幻卓 Huandroid · LLM 幻觉层（浏览器直连 · 多源竞速 + fallback） ============
+/* ============ Hallucindriod · 幻卓 · LLM 幻觉层（浏览器直连 · 多源竞速 + fallback） ============
  * 关键点：
  *  - 纯静态站没有后端，直接 fetch 免费 LLM 公共端点（必须支持 CORS）。
  *  - 主源 Pollinations（text.pollinations.ai/openai，CORS:*，免 Key）：openai-fast / openai 竞速。
@@ -44,12 +44,12 @@
 
   function systemPrompt(conf,id){
     // 智能终端是动作规划器：要精确、听话，不受置信度的荒诞风格影响
-    if(id==='terminal')return '你是「幻卓 Huandroid」手机内置智能终端的动作规划引擎。你理解用户的中文指令，把它拆解成手机可执行的结构化动作。要求：1)严格只输出一个纯JSON对象，不要markdown代码块、不要任何解释文字或前后缀；2)reply 是对用户的简短自然回应；3)actions 是动作数组，只能使用给定的动作类型，target 用中文应用名或给定枚举值；4)不做无法执行的事情，不编造不存在的动作类型。';
+    if(id==='terminal')return '你是「Hallucindriod」手机内置智能终端的动作规划引擎。你理解用户的中文指令，把它拆解成手机可执行的结构化动作。要求：1)严格只输出一个纯JSON对象，不要markdown代码块、不要任何解释文字或前后缀；2)reply 是对用户的简短自然回应；3)actions 是动作数组，只能使用给定的动作类型，target 用中文应用名或给定枚举值；4)不做无法执行的事情，不编造不存在的动作类型。';
     const pct=Math.round(conf*100);
-    if(conf>=0.8) return '你是「幻卓 Huandroid」的内容引擎，当前置信度 '+pct+'%。请生成【尽量贴近真实世界、合理可信】的中文内容：数据真实、符合常识、不荒诞。只输出一个纯JSON对象，不要markdown代码块，不要任何解释文字或前后缀。';
-    if(conf>=0.5) return '你是「幻卓 Huandroid」的幻觉内容引擎，当前置信度 '+pct+'%。请生成【一半真实一半荒诞、带点冷幽默】的中文创意内容。只输出一个纯JSON对象，不要markdown代码块，不要任何解释文字或前后缀。';
-    if(conf>=0.2) return '你是「幻卓 Huandroid」的创意幻觉内容引擎，当前置信度 '+pct+'%。请生成【天马行空、幽默荒诞、一本正经地虚构】的中文创意内容，比如会下代码雨的天空、会用月亮煮汤的城市。只输出一个纯JSON对象，不要markdown代码块，不要任何解释文字或前后缀。';
-    return '你是「幻卓 Huandroid」的奇想内容引擎，当前置信度 '+pct+'%。请生成【充满想象力、超现实、像童话或梦境一样】的中文内容：奇妙的地点、不可思议的天气、有趣的虚构数据。只输出一个纯JSON对象，不要markdown代码块，不要任何解释文字或前后缀。';
+    if(conf>=0.8) return '你是「Hallucindriod」的内容引擎，当前置信度 '+pct+'%。请生成【尽量贴近真实世界、合理可信】的中文内容：数据真实、符合常识、不荒诞。只输出一个纯JSON对象，不要markdown代码块，不要任何解释文字或前后缀。';
+    if(conf>=0.5) return '你是「Hallucindriod」的幻觉内容引擎，当前置信度 '+pct+'%。请生成【一半真实一半荒诞、带点冷幽默】的中文创意内容。只输出一个纯JSON对象，不要markdown代码块，不要任何解释文字或前后缀。';
+    if(conf>=0.2) return '你是「Hallucindriod」的创意幻觉内容引擎，当前置信度 '+pct+'%。请生成【天马行空、幽默荒诞、一本正经地虚构】的中文创意内容，比如会下代码雨的天空、会用月亮煮汤的城市。只输出一个纯JSON对象，不要markdown代码块，不要任何解释文字或前后缀。';
+    return '你是「Hallucindriod」的奇想内容引擎，当前置信度 '+pct+'%。请生成【充满想象力、超现实、像童话或梦境一样】的中文内容：奇妙的地点、不可思议的天气、有趣的虚构数据。只输出一个纯JSON对象，不要markdown代码块，不要任何解释文字或前后缀。';
   }
   function temperature(conf,id){ return id==='terminal'?0.15:+(0.2+(1-conf)*0.95).toFixed(2); }
   function buildUserPrompt(id,name){

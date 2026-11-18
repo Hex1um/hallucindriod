@@ -1,4 +1,4 @@
-/* ============ 幻卓 Huandroid · P2P 联机（WebRTC / PeerJS） ============
+/* ============ Hallucindriod · 幻卓 · P2P 联机（WebRTC / PeerJS） ============
  * 参考 borderops 的纯静态联机方案：
  *   · 用公共 PeerJS 信令 + STUN 建立 P2P DataChannel，无需自建后端。
  *   · 每个用户以「用户名哈希」作为固定 Peer ID，别人可以通过用户名找到他。
@@ -7,7 +7,7 @@
  */
 (function(){
   var PEER_LIB='vendor/peerjs.min.js';
-  var PREFIX='huandroid-v1-';
+  var PREFIX='hallucindriod-v1-';
   var libPromise=null;
   var peer=null, myId='', myName='';
   var conns={};          // peerId -> DataConnection

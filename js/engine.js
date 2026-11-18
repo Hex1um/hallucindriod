@@ -1,4 +1,4 @@
-/* ============ 幻卓 Huandroid · 现编引擎 ============
+/* ============ Hallucindriod · 幻卓 · 现编引擎 ============
  * openApp(): 打印代码瀑布 → 沙箱 iframe 现场渲染应用
  * 永不缓存：每次调用重新生成 HTML。
  */
@@ -75,7 +75,7 @@
     const col=pick(['#a78bfa','#7dd3fc','#5eead4','#f472b6']);
     return [
       '<span class="cm">// 幻卓应用市场 · 正在构建「'+name+'」</span>',
-      '<span class="kw">import</span> { createApp, render } <span class="kw">from</span> <span class="str">"@huandroid/core"</span>',
+      '<span class="kw">import</span> { createApp, render } <span class="kw">from</span> <span class="str">"@hallucindriod/core"</span>',
       '',
       '<span class="kw">const</span> '+varN+' = <span class="fn">createApp</span>({',
       '  name: <span class="str">"'+name+'"</span>,',
@@ -404,6 +404,33 @@
     };
   }
 
+  // 打开外部 Web 应用：直接加载站点，不经过大模型、不缓存生成内容
+  function openExternal(url,name){
+    if(busy)return;
+    noteUserActivity();
+    currentId='__external__';currentName=name||'外部应用';
+    if(window.HOS&&window.HOS.closePanels)window.HOS.closePanels();
+    const title=String(name||'外部应用');
+    const safeUrl=String(url||'').replace(/"/g,'%22');
+    const html=`<!DOCTYPE html><html><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<style>
+html,body{margin:0;height:100%;background:#0b0d12;overflow:hidden}
+iframe{width:100%;height:100%;border:0;display:block}
+.bar{position:fixed;left:0;right:0;top:0;height:38px;display:flex;align-items:center;gap:8px;
+background:rgba(12,14,20,.86);backdrop-filter:blur(10px);z-index:9;padding:0 8px}
+.xb{width:28px;height:28px;border-radius:50%;border:none;background:rgba(255,255,255,.14);color:#fff;font-size:17px;line-height:1;cursor:pointer}
+.tt{color:#e6e7ee;font-size:12.5px;font-weight:600}
+.wrap{position:absolute;inset:38px 0 0 0}
+</style></head><body>
+<div class="bar"><button class="xb" onclick="parent.postMessage({type:'close'},'*')">‹</button><span class="tt">${title}</span></div>
+<div class="wrap"><iframe src="${safeUrl}" allow="fullscreen; clipboard-write"></iframe></div>
+</body></html>`;
+    frame.srcdoc=html;
+    genLayer.hidden=true;
+    appLayer.hidden=false;
+  }
+
   // 接收 iframe 内部消息
   window.addEventListener('message',function(e){
     if(!e.data||typeof e.data!=='object')return;
@@ -426,6 +453,15 @@
     }
     else if(e.data.type==='social:addfriend')socialAddFriend(e.data.name);
     else if(e.data.type==='social:reply')socialReply(String(e.data.friend||''),String(e.data.text||''));
+    else if(e.data.type==='musicsearch'){
+      const q=String(e.data.q||'').trim(), nonce=e.data.nonce;
+      noteUserActivity();
+      (async()=>{
+        let d=null;
+        if(window.LLM){ try{ d=await window.LLM.fetchHallucination('music',q); }catch(err){ d=null; } }
+        if(frame&&frame.contentWindow){ try{ frame.contentWindow.postMessage({type:'musicdata',data:d,q:q,nonce:nonce},'*'); }catch(err){} }
+      })();
+    }
     else if(e.data.type==='social:save'){
       const social=window.__SOCIAL||(window.__SOCIAL={profile:null,friends:[]});
       if(Array.isArray(e.data.friends))social.friends=e.data.friends;
@@ -446,7 +482,7 @@
     }
   });
 
-  window.ENGINE={openApp,closeApp,regen,warmup,refreshData,preload,hasCache};
+  window.ENGINE={openApp,closeApp,regen,warmup,refreshData,preload,hasCache,openExternal};
   bindP2PInbox();
   // 已注册用户：启动时自动上线
   if(window.P2P && window.__SOCIAL && window.__SOCIAL.profile && window.__SOCIAL.profile.name){

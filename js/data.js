@@ -1,4 +1,4 @@
-/* ============ 幻卓 Huandroid · 数据 ============
+/* ============ Hallucindriod · 幻卓 · 数据 ============
  * 应用注册表（拟真图标）+ 词库。幻觉内容的核心素材。
  */
 
@@ -11,7 +11,7 @@ function svgIcon(bg, path, extra){
     +'<stop offset="0" stop-color="'+bg[0]+'"/><stop offset="1" stop-color="'+bg[1]+'"/>'
     +'</linearGradient></defs>'
     +'<rect x="0" y="0" width="64" height="64" rx="15" fill="url(#'+gid+')"/>'
-    +(extra||'')+path+'</svg>';
+    +'<g class="ic">'+(extra||'')+path+'</g></svg>';
 }
 const W='fill="#fff"';
 const ICONS={
@@ -25,13 +25,13 @@ const ICONS={
   store: svgIcon(['#ff9a44','#f4511e'],'<g '+W+'><path d="M16 26h32l-3 24H19z"/><path d="M24 26v-4a8 8 0 0 1 16 0v4" fill="none" stroke="#fff" stroke-width="3.5"/><rect x="27" y="34" width="10" height="8" rx="2" fill="#f4511e"/></g>'),
   browser: svgIcon(['#48c6ef','#1a73e8'],'<g '+W+'><circle cx="32" cy="32" r="20" fill="none" stroke="#fff" stroke-width="3.5"/><ellipse cx="32" cy="32" rx="8" ry="20" fill="none" stroke="#fff" stroke-width="2.6"/><path d="M13 32h38" stroke="#fff" stroke-width="3"/></g>'),
   camera: svgIcon(['#9aa4b2','#3b4452'],'<g '+W+'><rect x="11" y="19" width="42" height="30" rx="6"/><path d="M22 19l4-6h12l4 6"/><circle cx="32" cy="34" r="10" fill="#3b4452"/><circle cx="32" cy="34" r="6.5" fill="#cdd4de"/></g>'),
-  messages: svgIcon(['#5ce36b','#16a34a'],'<g '+W+'><path d="M32 13c-12 0-21 7-21 17 0 5 3 10 8 13l-2 8 9-5c2 .4 4 .6 6 .6 12 0 21-7 21-17S44 13 32 13z"/></g>'),
+  messages: svgIcon(['#34d399','#059669'],'<g><rect x="10" y="14" width="44" height="30" rx="12" fill="#fff"/><path d="M20 43l-2 8 12-7z" fill="#fff"/><circle cx="22" cy="29" r="3" fill="#059669"/><circle cx="32" cy="29" r="3" fill="#059669"/><circle cx="42" cy="29" r="3" fill="#059669"/></g>'),
   fish: svgIcon(['#2dd4bf','#0d9488'],'<g '+W+'><path d="M14 32c8-11 22-13 32-4l6-6v20l-6-6C36 43 22 41 14 32z"/><circle cx="24" cy="30" r="2.4" fill="#0d9488"/></g>'),
   game: svgIcon(['#ff6b81','#c2185b'],'<g '+W+'><path d="M20 24h24a10 10 0 0 1 10 11 8 8 0 0 1-14 6l-2-3H26l-2 3a8 8 0 0 1-14-6 10 10 0 0 1 10-11z"/><rect x="18" y="32" width="10" height="3.4" rx="1.7" fill="#c2185b"/><rect x="21.5" y="28.5" width="3.4" height="10" rx="1.7" fill="#c2185b"/><circle cx="42" cy="31" r="2.6" fill="#c2185b"/><circle cx="46" cy="36" r="2.6" fill="#c2185b"/></g>'),
   phone: svgIcon(['#5ce36b','#128c3e'],'<g '+W+'><path d="M20 12l-6 3c-3 1.5-3 5-1 9 3 7 9 15 17 21 4 3 8 3 9 0l3-6-10-7-5 5c-5-3-9-7-12-12l5-5z"/></g>'),
   health: svgIcon(['#ff6b6b','#d32f2f'],'<g '+W+'><path d="M32 50S12 38 12 25a11 11 0 0 1 20-6 11 11 0 0 1 20 6c0 13-20 25-20 25z"/><path d="M18 32h8l3-7 4 14 3-7h10" fill="none" stroke="#d32f2f" stroke-width="2.6" stroke-linejoin="round"/></g>'),
   settings: svgIcon(['#9aa4b2','#4b5563'],'<g '+W+'><path d="M32 20a12 12 0 1 0 0 24 12 12 0 0 0 0-24zm0 8a4 4 0 1 1 0 8 4 4 0 0 1 0-8z"/><path d="M29 8h6l1 6 4 2 5-3 4 4-3 5 2 4 6 1v6l-6 1-2 4 3 5-4 4-5-3-4 2-1 6h-6l-1-6-4-2-5 3-4-4 3-5-2-4-6-1v-6l6-1 2-4-3-5 4-4 5 3 4-2z" opacity=".55"/></g>'),
-  terminal: svgIcon(['#8b5cf6','#5b21b6'],'<g '+W+'><path d="M18 16h28a7 7 0 0 1 7 7v13a7 7 0 0 1-7 7H32l-11 7v-7h-3a7 7 0 0 1-7-7V23a7 7 0 0 1 7-7z"/><path d="M32 23l2.4 6.6L41 32l-6.6 2.4L32 41l-2.4-6.6L23 32l6.6-2.4z" fill="#5b21b6"/></g>'),
+  terminal: svgIcon(['#1f2937','#0b1220'],'<g><rect x="9" y="13" width="46" height="38" rx="6" fill="#0f172a" stroke="#4b5563" stroke-width="2.4"/><rect x="9" y="13" width="46" height="9" rx="6" fill="#374151"/><circle cx="15" cy="17.5" r="2" fill="#f87171"/><circle cx="21.5" cy="17.5" r="2" fill="#fbbf24"/><circle cx="28" cy="17.5" r="2" fill="#4ade80"/><path d="M16 30l7 5-7 5" fill="none" stroke="#4ade80" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/><rect x="27" y="38.5" width="12" height="3" rx="1.5" fill="#4ade80"/></g>'),
   delivery: svgIcon(['#fbbf24','#f59e0b'],'<g '+W+'><path d="M16 24h32l-3 26a4 4 0 0 1-4 4H23a4 4 0 0 1-4-4z"/><path d="M24 25v-6a8 8 0 0 1 16 0v6" fill="none" stroke="#fff" stroke-width="3.6"/><circle cx="26" cy="35" r="2.6" fill="#f59e0b"/><circle cx="38" cy="35" r="2.6" fill="#f59e0b"/><path d="M26 43h12" stroke="#f59e0b" stroke-width="3" stroke-linecap="round"/></g>'),
   video: svgIcon(['#ff4d8d','#c026d3'],'<g '+W+'><rect x="11" y="12" width="42" height="40" rx="9"/><path d="M28 22l14 10-14 10z" fill="#c026d3"/></g>'),
 };

@@ -1,4 +1,4 @@
-/* ============ 幻卓 Huandroid · 幻觉应用生成器（一）============
+/* ============ Hallucindriod · 幻卓 · 幻觉应用生成器（一）============
  * 每个 builder 现场拼出一份完整 HTML 文档，塞进沙箱 iframe。
  * 每次调用取样不同 → 「永不重样」。
  * 通过 parent.postMessage({type:'close'|'regen'}) 与系统通信。
@@ -132,25 +132,57 @@
   B.album = function(){
     const L=(typeof window.__LLM!=='undefined'&&window.__LLM)?window.__LLM:null;
     const llms=L&&Array.isArray(L.photos)?L.photos:null;
-    const n = llms?Math.max(llms.length,4):randInt(4,7);
+    const n = llms?Math.max(llms.length,4):randInt(6,8);
+    const emos=['🌌','🐈','🌊','🌇','🛸','🌸','🪐','🌵','🍋','🌙','🏔️','🍜'];
     let tiles='';
     for(let i=0;i<n;i++){
-      const p=neonPalette(), cap=llms&&llms[i]?llms[i].title:pick(WORDS.photoCaptions), e=llms&&llms[i]?llms[i].emoji:pick(['🌌','🐈','🌊','🌇','🛸','🌸','🪐','🌵','🍋','🌙']);
-      tiles+='<div class="ph" style="background:linear-gradient(135deg,'+p.a+'33,'+p.b+'55)">'
-        +'<div class="phemo">'+e+'</div><div class="phcap">'+cap+'</div>'
-        +'<div class="phmeta">'+randInt(2020,2026)+'.'+String(randInt(1,12)).padStart(2,'0')+'.'+String(randInt(1,28)).padStart(2,'0')+'</div></div>';
+      const cap=llms&&llms[i]?llms[i].title:pick(WORDS.photoCaptions);
+      const e=llms&&llms[i]?llms[i].emoji:emos[i%emos.length];
+      const seed='hallucindriod'+i*7+randInt(1,999);
+      const date=randInt(2020,2026)+'.'+String(randInt(1,12)).padStart(2,'0')+'.'+String(randInt(1,28)).padStart(2,'0');
+      tiles+='<div class="ph" data-cap="'+cap+'" data-date="'+date+'">'
+        +'<img src="https://picsum.photos/seed/'+seed+'/420/420" alt="'+cap+'" loading="lazy" '
+        +'onerror="this.style.display=\'none\';this.parentNode.classList.add(\'noimg\');this.parentNode.setAttribute(\'data-emo\',\''+e+'\')">'
+        +'<div class="phcap">'+cap+'</div><div class="phmeta">'+date+'</div></div>';
     }
     return shell({
       title:'相册', icon:'🖼️', accent:'#f472b6',
       css:'.al{padding:16px}.al h3{margin:4px 2px 14px;font-size:15px}'
         +'.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:11px}'
-        +'.ph{aspect-ratio:1;border-radius:16px;position:relative;overflow:hidden;border:1px solid rgba(255,255,255,.1);display:flex;align-items:center;justify-content:center}'
-        +'.phemo{font-size:52px;filter:drop-shadow(0 6px 12px rgba(0,0,0,.4))}'
-        +'.phcap{position:absolute;left:10px;right:10px;bottom:24px;font-size:11px;font-weight:600;text-shadow:0 1px 4px #000}'
-        +'.phmeta{position:absolute;left:10px;bottom:8px;font-size:9px;color:#ddd;opacity:.7}'
-        +'.hint{text-align:center;font-size:11px;color:#7c8096;margin-top:16px}',
+        +'.ph{aspect-ratio:1;border-radius:14px;position:relative;overflow:hidden;border:1px solid rgba(255,255,255,.1);'
+        +'background:linear-gradient(135deg,#2a2f45,#1a1d2b);cursor:pointer}'
+        +'.ph img{width:100%;height:100%;object-fit:cover;display:block}'
+        +'.ph.noimg:after{content:attr(data-emo);position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:48px}'
+        +'.phcap{position:absolute;left:0;right:0;bottom:0;padding:16px 10px 20px;font-size:11px;font-weight:600;color:#fff;'
+        +'background:linear-gradient(180deg,transparent,rgba(0,0,0,.72));text-shadow:0 1px 4px rgba(0,0,0,.6)}'
+        +'.phmeta{position:absolute;left:10px;bottom:8px;font-size:9px;color:rgba(255,255,255,.72)}'
+        +'.hint{text-align:center;font-size:11px;color:#7c8096;margin-top:16px}'
+        +'.viewer{position:fixed;inset:0;background:#000;z-index:80;display:none;flex-direction:column}'
+        +'.viewer.on{display:flex}'
+        +'.vtop{height:48px;display:flex;align-items:center;gap:10px;padding:0 12px;color:#fff}'
+        +'.vtop button{border:none;background:none;color:#fff;font-size:24px;cursor:pointer}'
+        +'.vtop b{font-size:13px;font-weight:500}'
+        +'.vimg{flex:1;display:flex;align-items:center;justify-content:center;padding:10px}'
+        +'.vimg img{max-width:100%;max-height:100%;border-radius:10px;object-fit:contain}'
+        +'.vbot{padding:14px 18px 24px;color:#e6e7ee;font-size:13px}'
+        +'.vbot small{display:block;color:#8b90a5;font-size:10.5px;margin-top:5px}',
       html:'<div class="al"><h3>📚 全部照片 · '+n+' 张</h3><div class="grid">'+tiles+'</div>'
-        +'<div class="hint">以上照片均由相机现拍，画质取决于模型心情</div></div>'
+        +'<div class="hint">点击查看大图</div></div>'
+        +'<div class="viewer" id="vw"><div class="vtop"><button id="vwbk">‹</button><b>照片</b></div>'
+        +'<div class="vimg" id="vwi"></div><div class="vbot" id="vwb"></div></div>',
+      js:'var vw=document.getElementById("vw"),vwi=document.getElementById("vwi"),vwb=document.getElementById("vwb");'
+        +'document.querySelectorAll(".ph").forEach(function(p){p.onclick=function(){'
+        +'  var img=this.querySelector("img"),src=img?img.getAttribute("src"):"";'
+        +'  var emo=this.getAttribute("data-emo")||"🌄";'
+        +'  vwi.innerHTML="";'
+        +'  if(img){var el=document.createElement("img");el.src=img.getAttribute("src");'
+        +'    el.onerror=function(){vwi.innerHTML="";var d=document.createElement("div");d.style.fontSize="90px";d.textContent=emo;vwi.appendChild(d)};'
+        +'    vwi.appendChild(el)}'
+        +'  else{var d2=document.createElement("div");d2.style.fontSize="90px";d2.textContent=emo;vwi.appendChild(d2)}'
+        +'  vwb.innerHTML=(this.getAttribute("data-cap")||"照片")+"<small>"+(this.getAttribute("data-date")||"")+"</small>";'
+        +'  vw.classList.add("on");'
+        +'}});'
+        +'document.getElementById("vwbk").onclick=function(){vw.classList.remove("on")};'
     });
   };
 
@@ -239,7 +271,13 @@
       +'<span class="st">'+s+'<small> '+arts[i]+'</small></span><span class="sd">3:'+String(randInt(10,59)).padStart(2,'0')+'</span></div>'});
     return shell({
       title:'音乐', icon:'🎵', accent:pal.a,
-      css:'.mu{padding:18px 20px;height:100%}'
+      css:'.mu{padding:16px 20px;height:100%;overflow-y:auto;scrollbar-width:none}.mu::-webkit-scrollbar{display:none}'
+        +'.msrch{display:flex;align-items:center;gap:8px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.1);border-radius:12px;padding:8px 8px 8px 12px;margin-bottom:16px}'
+        +'.msrch .ic{font-size:14px;color:#8b90a5}'
+        +'.msrch input{flex:1;min-width:0;background:none;border:none;outline:none;color:#fff;font-size:12.5px}'
+        +'.msrch input::placeholder{color:#6f7488}'
+        +'.msrch button{border:none;border-radius:9px;padding:7px 13px;background:var(--ac);color:#0b0b12;font-size:12px;font-weight:700;cursor:pointer}'
+        +'.msload{padding:22px 0;text-align:center;color:#8b90a5;font-size:12px}'
         +'.cover{width:100%;aspect-ratio:1.5;border-radius:18px;background:linear-gradient(135deg,'+pal.a+','+pal.b+');'
         +'display:flex;align-items:center;justify-content:center;font-size:66px;box-shadow:0 14px 32px rgba(0,0,0,.4)}'
         +'.now{font-size:16px;font-weight:700;margin:16px 0 2px}.artist{font-size:12px;color:#8b90a5}'
@@ -253,11 +291,11 @@
         +'.song .sd{color:#6a6e82}.song.act .st{color:#c4b5fd}'
         +'.eq{display:inline-block}.eq i{display:inline-block;width:3px;background:var(--ac);margin-left:2px;animation:eq .6s infinite alternate}'
         +'@keyframes eq{to{height:14px}}',
-      html:'<div class="mu"><div class="cover" id="cover">🎧</div>'
+      html:'<div class="mu"><div class="msrch"><span class="ic">⌕</span><input id="sq" placeholder="搜索歌曲、歌手" autocomplete="off"><button id="sgo">搜索</button></div>'
         +'<div class="now" id="now">'+songs[0]+'</div><div class="artist" id="artist">'+arts[0]+' · 正在播放</div>'
         +'<div class="prog"><i id="prog"></i></div><div class="times"><span id="t1">0:00</span><span id="t2">3:42</span></div>'
         +'<div class="ctrls"><button id="prev">⏮</button><button class="play" id="play">▶</button><button id="next">⏭</button></div>'
-        +'<div class="songs card" style="padding:6px 14px">'+list+'</div></div>',
+        +'<div class="songs card" id="songList" style="padding:6px 14px">'+list+'</div></div>',
       js:'var songs='+JSON.stringify(songs)+',arts='+JSON.stringify(arts)+',idx=0,playing=false,pr=0;'
         +'var now=document.getElementById("now"),artist=document.getElementById("artist"),play=document.getElementById("play"),'
         +'prog=document.getElementById("prog"),t1=document.getElementById("t1"),cover=document.getElementById("cover");'
@@ -272,7 +310,26 @@
         +'play.onclick=function(){playing=!playing;play.textContent=playing?"⏸":"▶";cover.style.transform=playing?"scale(1.03)":"none"};'
         +'document.getElementById("next").onclick=function(){load(idx+1)};'
         +'document.getElementById("prev").onclick=function(){load(idx-1)};'
-        +'document.querySelectorAll(".song").forEach(function(e){e.onclick=function(){load(+e.dataset.i);playing=true;play.textContent="⏸"}});'
+        +'function bindSongs(){document.querySelectorAll(".song").forEach(function(e){e.onclick=function(){load(+e.dataset.i);playing=true;play.textContent="⏸"}})}'
+        +'bindSongs();'
+        +'var sq=document.getElementById("sq"),sgo=document.getElementById("sgo"),songList=document.getElementById("songList"),lastQ=0;'
+        +'function doSearch(){'
+        +'  var q=(sq.value||"").trim();if(!q){return}'
+        +'  songList.innerHTML="<div class=msload>正在搜索「"+q+"」…</div>";'
+        +'  lastQ=Date.now();'
+        +'  parent.postMessage({type:"musicsearch",q:q,nonce:lastQ},"*");'
+        +'}'
+        +'sgo.onclick=doSearch;sq.onkeydown=function(e){if(e.key==="Enter")doSearch()};'
+        +'window.addEventListener("message",function(e){'
+        +'  if(!e.data||e.data.type!=="musicdata")return;'
+        +'  if(e.data.nonce&&e.data.nonce!==lastQ)return;'
+        +'  var d=e.data.data;'
+        +'  if(!d||!d.songs||!d.songs.length){songList.innerHTML="<div class=msload>没有找到相关歌曲</div>";return}'
+        +'  songs=d.songs.map(function(x){return "《"+x.title+"》"});'
+        +'  arts=d.songs.map(function(x){return x.artist||"未知歌手"});'
+        +'  var h="";for(var i=0;i<songs.length;i++){h+="<div class=\\"song\\" data-i=\\"+i+\\"><span class=\\"sn\\">"+(i+1)+"</span><span class=\\"st\\">"+songs[i]+"<small> "+arts[i]+"</small></span><span class=\\"sd\\">3:"+(10+i*7)%60+"</span></div>"}'
+        +'  songList.innerHTML=h;bindSongs();load(0);'
+        +'});'
     });
   };
 

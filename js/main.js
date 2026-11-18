@@ -1,4 +1,4 @@
-/* ============ 幻卓 Huandroid · 主程序 ============ */
+/* ============ Hallucindriod · 幻卓 · 主程序 ============ */
 (function(){
   const D=window.OS_DATA;
   const {APPS,DOCK_IDS,FOLDERS,WORDS,randInt,pick}=D;
@@ -10,10 +10,20 @@
   const lockscreen=$('lockscreen'),toastEl=$('toast');
 
   // ---------- 社交数据（父窗口持久化，iframe 通过 postMessage 读写） ----------
-  const SOCIAL_KEY='huandroid_social_v1';
+  const SOCIAL_KEY='hallucindriod_social_v1';
+  const LEGACY_SOCIAL_KEY='huandroid_social_v1';
   function loadSocial(){
     try{
-      const raw=localStorage.getItem(SOCIAL_KEY);
+      let raw=localStorage.getItem(SOCIAL_KEY);
+      // 兼容改名前的旧数据：读到旧 key 就迁移到新 key
+      if(!raw){
+        const legacy=localStorage.getItem(LEGACY_SOCIAL_KEY);
+        if(legacy){
+          raw=legacy;
+          localStorage.setItem(SOCIAL_KEY,legacy);
+          localStorage.removeItem(LEGACY_SOCIAL_KEY);
+        }
+      }
       const o=raw?JSON.parse(raw):null;
       if(o&&typeof o==='object')return {profile:o.profile||null,friends:Array.isArray(o.friends)?o.friends:[]};
     }catch(e){}
@@ -25,6 +35,23 @@
   window.__SOCIAL = loadSocial();
 
   // ---------- 图标 ----------
+  // 图标内容自动光学居中：按实际 bbox 平移，修正视觉重心偏移
+  function centerIconSvg(svg){
+    if(!svg)return;
+    const g=svg.querySelector('g.ic');
+    if(!g)return;
+    try{
+      const b=g.getBBox();
+      if(!b.width||!b.height)return;
+      const dx=32-(b.x+b.width/2), dy=32-(b.y+b.height/2);
+      if(Math.abs(dx)>=1.2||Math.abs(dy)>=1.2){
+        g.setAttribute('transform','translate('+dx.toFixed(2)+','+dy.toFixed(2)+')');
+      }
+    }catch(e){}
+  }
+  function centerAllIcons(){
+    document.querySelectorAll('.app-icon svg,.dock-item svg,.mini svg,.folder-box svg').forEach(centerIconSvg);
+  }
   function iconInner(app){
     const svg=app.svg||('<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:27px;background:linear-gradient(135deg,'+app.grad[0]+','+app.grad[1]+')">'+app.icon+'</div>');
     return svg;
@@ -53,6 +80,28 @@
     el.addEventListener('click',()=>openDrawer());
     return el;
   }
+  // 第二屏：外部 Web 应用（不经过 LLM，直接加载站点）
+  const BORDER_ICON='<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">'
+    +'<defs><linearGradient id="bopsBg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#3f4a35"/><stop offset="1" stop-color="#0f1511"/></linearGradient></defs>'
+    +'<rect x="0" y="0" width="64" height="64" rx="15" fill="url(#bopsBg)"/>'
+    +'<g class="ic"><circle cx="32" cy="32" r="15.5" fill="none" stroke="#a3e635" stroke-width="2.6"/>'
+    +'<circle cx="32" cy="32" r="3.2" fill="#a3e635"/>'
+    +'<path d="M32 11v8.5M32 44.5V53M11 32h8.5M44.5 32H53" stroke="#a3e635" stroke-width="2.6" stroke-linecap="round"/></g></svg>';
+  function renderPage2(){
+    const grid2=$('appGrid2');
+    if(!grid2)return;
+    grid2.innerHTML='';
+    const bops=document.createElement('div');
+    bops.className='app-item';
+    bops.title='BORDER OPS';
+    bops.innerHTML='<div class="app-icon">'+BORDER_ICON+'</div><div class="app-name">BORDER OPS</div>';
+    bops.addEventListener('click',()=>{
+      if(window.ENGINE&&window.ENGINE.openExternal)window.ENGINE.openExternal('https://hex1um.github.io/borderops/','BORDER OPS');
+    });
+    grid2.appendChild(bops);
+    centerAllIcons();
+  }
+
   function renderIcons(){
     appGrid.innerHTML='';
     FOLDERS.forEach(f=>appGrid.appendChild(folderEl(f)));
@@ -66,10 +115,34 @@
       dock.appendChild(iconEl(app,'dock-item',()=>window.ENGINE.openApp(app.id)));
     });
     renderDrawerGrid(APPS);
+    renderPage2();
+    centerAllIcons();
+    // 图标字体/布局就绪后再校正一次
+    setTimeout(centerAllIcons,60);
   }
   function renderDrawerGrid(list){
     drawerGrid.innerHTML='';
     list.forEach(app=>drawerGrid.appendChild(iconEl(app,'app-item',()=>window.ENGINE.openApp(app.id))));
+  }
+
+  // ---------- 桌面分页：左右滑动 ----------
+  const homePages=$('homePages'),pageDots=$('pageDots');
+  function syncDots(){
+    if(!homePages||!pageDots)return;
+    const idx=Math.round(homePages.scrollLeft/Math.max(1,homePages.clientWidth));
+    [...pageDots.children].forEach((d,i)=>d.classList.toggle('active',i===idx));
+  }
+  if(homePages){
+    homePages.addEventListener('scroll',syncDots,{passive:true});
+    // 桌面也支持鼠标/触控拖拽换页（桌面浏览器没有横向滚动条时）
+    let dragX=null,dragStartLeft=0;
+    homePages.addEventListener('touchstart',e=>{dragX=e.touches[0].clientX;dragStartLeft=homePages.scrollLeft},{passive:true});
+    homePages.addEventListener('touchend',e=>{
+      if(dragX===null)return;
+      const dx=dragX-e.changedTouches[0].clientX;
+      if(Math.abs(dx)>50)homePages.scrollTo({left:dragStartLeft+(dx>0?homePages.clientWidth:-homePages.clientWidth),behavior:'smooth'});
+      dragX=null;
+    },{passive:true});
   }
 
   // ---------- 抽屉（无搜索栏，搜索统一在应用商店内） ----------
