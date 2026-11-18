@@ -9,6 +9,54 @@
   const controlCenter=$('controlCenter');
   const lockscreen=$('lockscreen'),toastEl=$('toast');
 
+  // ---------- 音频桥：iframe 是沙箱，拿不到用户手势，由父窗口统一发声 ----------
+  const AUDIO={
+    ac:null,
+    ensure(){
+      if(!this.ac){
+        const AC=window.AudioContext||window.webkitAudioContext;
+        if(!AC)return null;
+        try{ this.ac=new AC(); }catch(e){ return null }
+      }
+      if(this.ac.state==='suspended'){ try{ this.ac.resume(); }catch(e){} }
+      return this.ac;
+    },
+    tone(freq,dur,vol,type){
+      const ac=this.ensure();
+      if(!ac||!freq||!isFinite(freq))return false;
+      try{
+        const t=ac.currentTime+0.01;
+        const o=ac.createOscillator(),g=ac.createGain();
+        o.type=type||'sine';
+        o.frequency.value=freq;
+        g.gain.setValueAtTime(0.0001,t);
+        g.gain.exponentialRampToValueAtTime(Math.max(0.002,vol||0.15),t+0.02);
+        g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
+        o.connect(g);g.connect(ac.destination);
+        o.start(t);o.stop(t+dur+0.06);
+        return true;
+      }catch(e){ return false }
+    }
+  };
+  window.AUDIO=AUDIO;
+  // 首次任何交互就初始化音频上下文（浏览器要求手势），后续 iframe 里的声音才响得出来
+  ['pointerdown','touchstart','keydown'].forEach(function(ev){
+    document.addEventListener(ev,function(){ AUDIO.ensure(); },{once:true,capture:true});
+  });
+
+  // ---------- 已安装应用（应用商店下载到桌面） ----------
+  const INSTALL_KEY='hallucindriod_installed_v1';
+  function loadInstalled(){
+    try{
+      const a=JSON.parse(localStorage.getItem(INSTALL_KEY)||'[]');
+      return Array.isArray(a)?a:[];
+    }catch(e){ return [] }
+  }
+  function saveInstalled(list){
+    try{ localStorage.setItem(INSTALL_KEY,JSON.stringify(list)); }catch(e){}
+  }
+  window.__INSTALLED=loadInstalled();
+
   // ---------- 社交数据（父窗口持久化，iframe 通过 postMessage 读写） ----------
   const SOCIAL_KEY='hallucindriod_social_v1';
   const LEGACY_SOCIAL_KEY='huandroid_social_v1';
@@ -107,6 +155,15 @@
     FOLDERS.forEach(f=>appGrid.appendChild(folderEl(f)));
     APPS.forEach(app=>{
       appGrid.appendChild(iconEl(app,'app-item',()=>window.ENGINE.openApp(app.id)));
+    });
+    // 商店下载的应用：emoji 图标 + 哈希配色
+    (window.__INSTALLED||[]).forEach(app=>{
+      const hs=[[265,320],[200,265],[160,200],[25,320],[340,265],[230,160],[90,160]];
+      let h=0;for(let i=0;i<app.name.length;i++)h=(h*31+app.name.charCodeAt(i))>>>0;
+      const pr=hs[h%hs.length];
+      const grad=['hsl('+pr[0]+' 85% 64%)','hsl('+pr[1]+' 85% 56%)'];
+      appGrid.appendChild(iconEl({id:app.id,name:app.name,icon:app.emoji||'✦',grad},'app-item',
+        ()=>window.ENGINE.openApp(app.id,app.name)));
     });
     dock.innerHTML='';
     DOCK_IDS.forEach(id=>{
@@ -271,6 +328,8 @@
     setToggle,lockScreen,
     get social(){ return window.__SOCIAL; },
     saveSocial,
+    saveInstalled,
+    reloadInstalled(){ window.__INSTALLED=loadInstalled(); return window.__INSTALLED; },
     reloadSocial(){ window.__SOCIAL=loadSocial(); return window.__SOCIAL; }
   };
 

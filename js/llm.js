@@ -37,7 +37,7 @@
     phone:   n=>`为一次通话生成内容。格式：{"contact":"通话对象称呼","line":"对方在电话里说的一句话，20字内"}。主题：${n}`,
     delivery:n=>`为一个本地生活App生成首页。格式：{"city":"城市","rank":{"title":"榜单名如 吃喝玩乐指南","item":"榜单项标题18字内","tag":"热评榜第4名","dist":"2.9km"},"free":"免费试活动文案16字内","feed":[{"title":"图文标题20字内","author":"用户昵称","level":"Lv数字","likes":数字,"emoji":"一个emoji"}]}。生成4条图文，主题：${n}`,
     video:   n=>`为一个视频App生成推荐列表。格式：{"videos":[{"title":"视频标题22字内","up":"UP主名","views":"播放量如 1.3万","danmaku":"弹幕数如 3","dur":"时长如 1:06","cover":"一个emoji","hot":true或false}]}。生成6条视频，主题：${n}`,
-    terminal:n=>`你是手机智能助手。用户指令：「${n}」。把指令解析成可执行动作，只输出纯JSON：{"reply":"对用户的自然语言回应，16字内","actions":[{"type":"动作类型","target":"目标值","label":"动作简述，8字内"}]}。可用动作：openApp(打开应用,target填应用名如 计算器/天气/相机/音乐/地图/浏览器/短信/电话/设置/应用商店)、closeApp(关闭当前应用)、toast(显示提示,target填提示文字)、toggle(开关,target填 wifi/蓝牙/手电筒/飞行模式/勿扰)、call(拨号,target填号码或联系人)、message(发短信,target填联系人)、browse(打开网页,target填主题或网址)、searchApp(应用商店搜索,target填关键词)。最多3个动作。`,
+    terminal:n=>`你是手机智能助手。用户指令：「${n}」。把指令解析成可执行动作，只输出纯JSON：{"reply":"对用户的自然语言回应，16字内","actions":[{"type":"动作类型","target":"目标值","label":"动作简述，8字内"}]}。可用动作：openApp(打开应用,target填应用名如 天气/相机/音乐/地图/浏览器/短信/电话/设置/应用商店)、closeApp(关闭当前应用)、toast(显示提示,target填提示文字)、toggle(开关,target填 wifi/蓝牙/手电筒/飞行模式/勿扰)、call(拨号,target填号码或联系人)、message(发短信,target填联系人)、browse(打开网页,target填主题或网址)、searchApp(应用商店搜索,target填关键词)。最多3个动作。`,
     friend:  n=>`为一个网名叫「${n}」的聊天好友生成人设。格式：{"avatar":"一个emoji","level":"Lv数字","bio":"个性签名，16字内","greeting":"主动打招呼的一句话，20字内"}。只输出JSON。`,
     chatreply:n=>`你在扮演一个聊天对象。根据下面的上下文用一句自然口语回复（20字内，口语化）。上下文：${n}。只输出JSON：{"reply":"你的回复"}`,
     calculator:n=>`为AI计算器生成两句话。格式：{"sign":"AI助手签名，8字内","tip":"算错结果时的吐槽，18字内"}。主题：${n}`
@@ -54,7 +54,7 @@
   }
   function temperature(conf,id){ return id==='terminal'?0.15:+(0.2+(1-conf)*0.95).toFixed(2); }
   function buildUserPrompt(id,name){
-    if(id==='__generic__'||!SCHEMA[id]) return '用户想要一个叫「'+name+'」的手机App。只输出纯JSON：{"tagline":"一句App广告语，20字内","features":["功能1","功能2","功能3"]}';
+    if(id==='__generic__'||!SCHEMA[id]) return '用户想要一个叫「'+name+'」的手机App。只输出纯JSON：{"tagline":"贴合这个应用的宣传语，20字内","features":["贴合该应用的具体能力","另一项具体能力","第三项具体能力"]}。要求：features 必须是和「'+name+'」相关的具体能力短语，禁止出现"功能1""功能2"这类占位文字。';
     return SCHEMA[id](name);
   }
   function extractJSON(text){

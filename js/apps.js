@@ -300,18 +300,46 @@
         +'var now=document.getElementById("now"),artist=document.getElementById("artist"),play=document.getElementById("play"),'
         +'prog=document.getElementById("prog"),t1=document.getElementById("t1"),cover=document.getElementById("cover");'
         +'var emos=["🎧","🎹","🎸","🎤","🥁","🎷"];'
+        +'var ac=null,seqTimer=null,step=0,vol=0.16;'
+        +'var SCALE=[261.63,293.66,329.63,392.00,440.00,523.25,587.33,659.25,783.99];'
+        +'function ensureAC(){'
+        +'  var AC=window.AudioContext||window.webkitAudioContext;if(!AC)return null;'
+        +'  if(!ac){try{ac=new AC()}catch(e){return null}}'
+        +'  if(ac.state==="suspended")ac.resume();return ac;}'
+        +'function tone(freq,dur,gainPeak,type,when){'
+        +'  if(!ac)return;var o=ac.createOscillator(),g=ac.createGain();'
+        +'  o.type=type||"sine";o.frequency.value=freq;'
+        +'  g.gain.setValueAtTime(0.0001,when);'
+        +'  g.gain.exponentialRampToValueAtTime(gainPeak||vol,when+0.03);'
+        +'  g.gain.exponentialRampToValueAtTime(0.0001,when+dur);'
+        +'  o.connect(g);g.connect(ac.destination);o.start(when);o.stop(when+dur+0.05);}'
+        +'function playStep(){'
+        +'  if(!playing)return;'
+        +'  var i=step+idx*3;'
+        +'  var f=SCALE[(i*3+idx*2)%SCALE.length];'
+        +'  parent.postMessage({type:"tone",freq:f,dur:0.26,vol:vol,wave:"triangle"},"*");'
+        +'  if(step%4===0)parent.postMessage({type:"tone",freq:f/2,dur:0.5,vol:vol*0.7,wave:"sine"},"*");'
+        +'  if(step%8===3)parent.postMessage({type:"tone",freq:SCALE[(i*5+2)%SCALE.length],dur:0.18,vol:vol*0.55,wave:"sine"},"*");'
+        +'  step++;}'
+        +'var seqTimer2=null;'
+        +'function startAudio(){if(seqTimer)clearInterval(seqTimer);seqTimer=setInterval(playStep,300);}'
+        +'function stopAudio(){if(seqTimer){clearInterval(seqTimer);seqTimer=null}}'
         +'function fmt(s){return Math.floor(s/60)+":"+String(Math.floor(s%60)).padStart(2,"0")}'
         +'function load(i){idx=(i+songs.length)%songs.length;now.textContent=songs[idx];'
-        +'artist.textContent=arts[idx]+" · 正在播放";cover.textContent=emos[idx%emos.length];pr=0;'
+        +'artist.textContent=arts[idx]+" · 正在播放";cover.textContent=emos[idx%emos.length];pr=0;step=0;'
         +'document.querySelectorAll(".song").forEach(function(e,j){e.classList.toggle("act",j===idx)});'
         +'prog.style.width="0%";t1.textContent="0:00"}'
         +'function loop(){if(playing){pr+=0.5;if(pr>=222)load(idx+1);prog.style.width=(pr/222*100)+"%";t1.textContent=fmt(pr)}}'
         +'setInterval(loop,500);'
-        +'play.onclick=function(){playing=!playing;play.textContent=playing?"⏸":"▶";cover.style.transform=playing?"scale(1.03)":"none"};'
+        +'play.onclick=function(){playing=!playing;play.textContent=playing?"⏸":"▶";'
+        +'cover.style.transform=playing?"scale(1.03)":"none";'
+        +'if(playing)startAudio();else stopAudio();};'
         +'document.getElementById("next").onclick=function(){load(idx+1)};'
         +'document.getElementById("prev").onclick=function(){load(idx-1)};'
-        +'function bindSongs(){document.querySelectorAll(".song").forEach(function(e){e.onclick=function(){load(+e.dataset.i);playing=true;play.textContent="⏸"}})}'
+        +'function bindSongs(){document.querySelectorAll(".song").forEach(function(e){e.onclick=function(){'
+        +'load(+e.dataset.i);playing=true;play.textContent="⏸";cover.style.transform="scale(1.03)";startAudio()}})}'
         +'bindSongs();'
+        +'window.__musicState=function(){return {playing:playing,step:step,timer:!!seqTimer}};'
         +'var sq=document.getElementById("sq"),sgo=document.getElementById("sgo"),songList=document.getElementById("songList"),lastQ=0;'
         +'function doSearch(){'
         +'  var q=(sq.value||"").trim();if(!q){return}'
@@ -368,70 +396,166 @@
   B.store = function(){
     const L=(typeof window.__LLM!=='undefined'&&window.__LLM)?window.__LLM:null;
     const llms=L&&Array.isArray(L.apps)?L.apps:null;
-    const n=llms?llms.length:randInt(5,7), ideas=llms?llms.map(x=>x.name):pickN(WORDS.appIdeas,n);
-    const emos=['🧘','🐟','⚔️','🔮','😴','📈','🐟','💼','🎏','🪞','🤖','🦋','🪙','🌙','🗣️','🎐'];
-    let cards='';
+    const n=llms?llms.length:randInt(5,7);
+    const ideas=llms?llms.map(x=>x.name):pickN(WORDS.appIdeas,n);
+    const emos=['🧘','🐟','⚔️','🔮','😴','📈','💼','🎏','🪞','🤖','🦋','🪙','🌙','🗣️','🎐'];
+    const seed=[];
     ideas.forEach((name,i)=>{
-      const p=neonPalette();
-      const desc=llms&&llms[i]&&llms[i].desc?llms[i].desc:pick(WORDS.storeDesc);
-      const emo=llms&&llms[i]&&llms[i].emoji?llms[i].emoji:emos[(i+randInt(0,5))%emos.length];
-      cards+='<div class="sc" data-name="'+name+'" data-desc="'+desc+'" data-emoji="'+emo+'"><div class="si" style="background:linear-gradient(135deg,'+p.a+','+p.b+')">'+emo+'</div>'
-        +'<div class="sinfo"><b>'+name+'</b><span>'+desc+'</span>'
-        +'<small>★ '+(4+Math.random()).toFixed(1)+' · '+randInt(1,99)+' 万下载</small></div>'
-        +'<button class="inst">获取</button></div>';
+      seed.push({
+        name:String(name||'神秘应用'),
+        desc:(llms&&llms[i]&&llms[i].desc)||pick(WORDS.storeDesc),
+        emoji:(llms&&llms[i]&&llms[i].emoji)||emos[i%emos.length]
+      });
     });
-    // 内联卡片生成逻辑（沙箱内无法访问外部函数）
-    const cardJS=
-      'var emos='+JSON.stringify(emos)+',descs='+JSON.stringify(WORDS.storeDesc)+',ideas='+JSON.stringify(WORDS.appIdeas)+';'
-      +'function pal(){var hs=[265,200,320,160,25,340,230,90],h=hs[Math.floor(Math.random()*hs.length)];return {a:"hsl("+h+" 85% 62%)",b:"hsl("+((h+40)%360)+" 85% 55%)"}}'
-      +'function P(a){return a[Math.floor(Math.random()*a.length)]}'
-      +'function cardHTML(name,desc,emo){var p=pal();return "<div class=sc data-name=\\""+name+"\\" data-desc=\\""+desc+"\\" data-emoji=\\""+emo+"\\"><div class=si style=\\"background:linear-gradient(135deg,"+p.a+","+p.b+")\\">"+emo+"</div>"'
-      +'+"<div class=sinfo><b>"+name+"</b><span>"+desc+"</span><small>★ "+(4+Math.random()).toFixed(1)+" · "+(1+Math.floor(Math.random()*99))+" 万下载</small></div><button class=inst>获取</button></div>"}'
-      +'function bindInstall(){document.querySelectorAll(".sc .inst").forEach(function(b){b.onclick=function(){if(this.textContent==="✓已装")return;this.textContent="✓已装";var nm=this.parentNode.parentNode.getAttribute("data-name");parent.postMessage({type:"openapp",id:"__generic__",name:nm},"*")}})}';
+    const dataJSON=JSON.stringify({apps:seed}).replace(/</g,'\\u003c');
+    const emoJSON=JSON.stringify(emos);
+    const descJSON=JSON.stringify(WORDS.storeDesc);
+
+    const js = `var D=${dataJSON},EMOS=${emoJSON},DESCS=${descJSON};
+var q=document.getElementById('storeQ'),list=document.getElementById('stList'),lbl=document.getElementById('stLabel');
+var dtl=document.getElementById('dtl'),nonce=0,lastNonce=0,curApp=null;
+function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]})}
+function hash(s){var h=0;for(var i=0;i<s.length;i++){h=(h*31+s.charCodeAt(i))>>>0}return h}
+function gradOf(name){var hs=[[265,320],[200,265],[160,200],[25,320],[340,265],[230,160],[90,160]];var p=hs[hash(name)%hs.length];return 'linear-gradient(135deg,hsl('+p[0]+' 85% 64%),hsl('+p[1]+' 85% 56%))'}
+function featsOf(name){return [
+  {i:'✦',t:'实时内容生成',d:'每次打开都能看到新的内容'},
+  {i:'⚡',t:'打开即用',d:'无需下载安装包，点开就在线运行'},
+  {i:'🎛️',t:'个性设置',d:'按你的偏好调整界面与推荐'}
+]}
+function cardHTML(a){
+  return '<div class="sc" data-name="'+esc(a.name)+'">'
+    +'<div class="si" style="background:'+gradOf(a.name)+'">'+esc(a.emoji||'✦')+'</div>'
+    +'<div class="sinfo"><b>'+esc(a.name)+'</b><span>'+esc(a.desc)+'</span>'
+    +'<small>★ '+(4+((hash(a.name)%10)/10)).toFixed(1)+' · '+(1+hash(a.name)%98)+' 万下载</small></div>'
+    +'<button class="inst" data-name="'+esc(a.name)+'">获取</button></div>';
+}
+function renderList(apps){
+  list.innerHTML=apps.map(cardHTML).join('');
+  bind();
+}
+function bind(){
+  list.querySelectorAll('.sc').forEach(function(c){
+    c.onclick=function(ev){
+      if(ev.target.closest('.inst'))return;
+      openDetail(this.getAttribute('data-name'));
+    };
+  });
+  list.querySelectorAll('.inst').forEach(function(b){
+    b.onclick=function(ev){
+      ev.stopPropagation();
+      var nm=this.getAttribute('data-name');
+      install(nm);
+      this.textContent='✓ 已添加';
+      this.disabled=true;
+    };
+  });
+}
+function findApp(name){
+  var a=D.apps.filter(function(x){return x.name===name})[0];
+  if(a)return a;
+  return {name:name,desc:'为你现场生成的应用',emoji:EMOS[hash(name)%EMOS.length]};
+}
+function openDetail(name){
+  var a=findApp(name);curApp=a;
+  var fs=featsOf(a.name);
+  dtl.innerHTML='<div class="dt">'
+    +'<div class="dtop"><button class="dbk" id="dbk">‹</button><b>应用详情</b></div>'
+    +'<div class="dbody">'
+    +'<div class="dicon" style="background:'+gradOf(a.name)+'">'+esc(a.emoji||'✦')+'</div>'
+    +'<h2>'+esc(a.name)+'</h2>'
+    +'<p class="dtag">'+esc(a.desc)+'</p>'
+    +'<div class="dmeta"><span>★ '+(4+((hash(a.name)%10)/10)).toFixed(1)+'</span><span>'+(1+hash(a.name)%98)+' 万下载</span><span>'+(20+hash(a.name)%80)+' MB</span></div>'
+    +fs.map(function(f){return '<div class="dfeat"><span class="fi">'+f.i+'</span><div><b>'+f.t+'</b><span>'+f.d+'</span></div></div>'}).join('')
+    +'<button class="dget" id="dget">下载到桌面</button>'
+    +'<div class="dtip">由大模型现场生成 · 添加到桌面后即可随时打开</div>'
+    +'</div></div>';
+  dtl.classList.add('on');
+  document.getElementById('dbk').onclick=function(){dtl.classList.remove('on')};
+  document.getElementById('dget').onclick=function(){
+    install(a.name);
+    this.textContent='✓ 已添加到桌面';
+    this.disabled=true;
+    this.style.opacity=.7;
+  };
+}
+function install(name){
+  var a=findApp(name);
+  parent.postMessage({type:'install',app:{name:a.name,emoji:a.emoji||'✦',desc:a.desc}},'*');
+}
+function doSearch(){
+  var kw=(q.value||'').trim();if(!kw)return;
+  lbl.textContent='搜索「'+kw+'」';
+  list.innerHTML='<div class=sload><div class=sp>✦</div><div>正在寻找应用…</div></div>';
+  lastNonce=++nonce;
+  parent.postMessage({type:'storegen',topic:kw,nonce:lastNonce},'*');
+}
+document.getElementById('storeGo').onclick=doSearch;
+q.onkeydown=function(e){if(e.key==='Enter'){doSearch();q.blur()}};
+window.addEventListener('message',function(e){
+  if(!e.data||e.data.type!=='storedata')return;
+  if(e.data.nonce&&e.data.nonce!==lastNonce)return;
+  var kw=e.data.keyword||'应用',apps=e.data.data&&e.data.data.apps;
+  var out=[{name:kw,desc:'为你现场生成的应用 · 点击查看详情',emoji:EMOS[hash(kw)%EMOS.length]}];
+  if(apps&&apps.length){
+    apps.forEach(function(a){
+      if(!a||!a.name)return;
+      if(a.name===kw)return;
+      out.push({name:String(a.name),desc:String(a.desc||DESCS[0]),emoji:String(a.emoji||EMOS[hash(String(a.name))%EMOS.length])});
+    });
+  }
+  D.apps=out;
+  renderList(out);
+});
+renderList(D.apps);
+bind();`;
+
     return shell({
       title:'应用商店', icon:'🛍️', accent:'#818cf8',
-      css:'.st{padding:16px}.st h3{margin:2px 2px 12px;font-size:15px}'
+      css:'.st{padding:16px;height:100%;overflow-y:auto;scrollbar-width:none}.st::-webkit-scrollbar{display:none}'
+        +'.st h3{margin:2px 2px 12px;font-size:15px}'
         +'.srch{display:flex;gap:8px;margin-bottom:14px}'
         +'.srch input{flex:1;min-width:0;padding:11px 14px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.1);border-radius:14px;font-size:12px;color:#fff;outline:none}'
         +'.srch input::placeholder{color:#8b90a5}'
         +'.srch button{border:none;border-radius:14px;padding:0 16px;background:rgba(129,140,248,.28);color:#c7d2fe;font-size:12px;cursor:pointer}'
         +'.stlabel{font-size:11px;color:#8b90a5;margin:0 2px 8px}'
-        +'.sc{display:flex;align-items:center;gap:12px;padding:12px 4px;border-bottom:1px solid rgba(255,255,255,.05)}'
-        +'.si{width:48px;height:48px;border-radius:13px;display:flex;align-items:center;justify-content:center;font-size:25px;flex-shrink:0}'
-        +'.sinfo{flex:1;min-width:0}.sinfo b{font-size:13px}.sinfo span{display:block;font-size:10px;color:#8b90a5;margin:2px 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}'
+        +'.sc{display:flex;align-items:center;gap:12px;padding:12px 4px;border-bottom:1px solid rgba(255,255,255,.05);cursor:pointer}'
+        +'.sc:active{background:rgba(255,255,255,.04)}'
+        +'.si{width:50px;height:50px;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:26px;flex-shrink:0}'
+        +'.sinfo{flex:1;min-width:0}.sinfo b{font-size:13.5px}'
+        +'.sinfo span{display:block;font-size:10.5px;color:#8b90a5;margin:3px 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}'
         +'.sinfo small{font-size:10px;color:#fbbf24}'
-        +'.inst{border:none;border-radius:999px;padding:7px 15px;font-size:12px;background:rgba(129,140,248,.2);color:#c7d2fe;cursor:pointer}'
-        +'.foot{text-align:center;color:#6a6e82;font-size:11px;margin-top:18px}'
+        +'.inst{border:none;border-radius:999px;padding:7px 15px;font-size:12px;background:rgba(129,140,248,.2);color:#c7d2fe;cursor:pointer;flex-shrink:0}'
+        +'.inst:disabled{opacity:.6}'
+        +'.foot{text-align:center;color:#6a6e82;font-size:11px;margin-top:18px;padding-bottom:10px}'
         +'.sload{text-align:center;color:#8b90a5;font-size:12px;padding:30px 0}.sload .sp{font-size:26px;animation:spn 1.2s linear infinite;display:inline-block}'
-        +'@keyframes spn{to{transform:rotate(360deg)}}',
+        +'@keyframes spn{to{transform:rotate(360deg)}}'
+        +'.dtl{position:fixed;inset:0;background:#101119;z-index:70;display:flex;flex-direction:column;transform:translateX(100%);transition:transform .22s}'
+        +'.dtl.on{transform:none}'
+        +'.dtop{height:50px;display:flex;align-items:center;gap:10px;padding:0 12px;border-bottom:1px solid rgba(255,255,255,.06);flex-shrink:0}'
+        +'.dtop button{border:none;background:none;color:#c7d2fe;font-size:24px;cursor:pointer;padding:0 4px}'
+        +'.dtop b{font-size:14.5px}'
+        +'.dbody{flex:1;overflow-y:auto;padding:26px 22px 30px;text-align:center;scrollbar-width:none}'
+        +'.dbody::-webkit-scrollbar{display:none}'
+        +'.dicon{width:96px;height:96px;border-radius:24px;margin:0 auto 18px;display:flex;align-items:center;justify-content:center;font-size:48px;box-shadow:0 14px 34px rgba(0,0,0,.4)}'
+        +'.dbody h2{margin:0 0 8px;font-size:20px}'
+        +'.dtag{margin:0 0 14px;font-size:12.5px;color:#8b90a5;line-height:1.6}'
+        +'.dmeta{display:flex;justify-content:center;gap:18px;font-size:11px;color:#8b90a5;margin-bottom:24px}'
+        +'.dmeta span:first-child{color:#fbbf24}'
+        +'.dfeat{display:flex;gap:12px;text-align:left;padding:13px 0;border-bottom:1px solid rgba(255,255,255,.05)}'
+        +'.dfeat .fi{width:34px;height:34px;border-radius:10px;background:rgba(129,140,248,.16);color:#c7d2fe;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}'
+        +'.dfeat b{display:block;font-size:12.5px;margin-bottom:3px}'
+        +'.dfeat span{font-size:11px;color:#8b90a5}'
+        +'.dget{width:100%;margin-top:26px;border:none;border-radius:999px;padding:14px;font-size:14px;font-weight:700;color:#0b0b12;background:linear-gradient(135deg,#a5b4fc,#818cf8);cursor:pointer}'
+        +'.dget:active{opacity:.85}'
+        +'.dtip{margin-top:12px;font-size:10.5px;color:#6a6e82}',
       html:'<div class="st"><h3>应用商店</h3>'
-        +'<div class="srch"><input id="storeQ" placeholder="搜索或创建一个应用" autocomplete="off"><button id="storeGo">搜索</button></div>'
+        +'<div class="srch"><input id="storeQ" placeholder="搜索或输入一个应用名" autocomplete="off"><button id="storeGo">搜索</button></div>'
         +'<div class="stlabel" id="stLabel">今日推荐</div>'
-        +'<div id="stList">'+cards+'</div>'
-        +'<div class="foot">应用均由官方上架 · 安全检测通过</div></div>',
-      js:cardJS
-        +'var q=document.getElementById("storeQ"),list=document.getElementById("stList"),lbl=document.getElementById("stLabel"),nonce=0,lastNonce=0;'
-        +'bindInstall();'
-        +'function doSearch(){'
-        +'  var kw=q.value.trim();if(!kw)return;'
-        +'  lbl.textContent="搜索「"+kw+"」";'
-        +'  list.innerHTML="<div class=sload><div class=sp>✦</div><div>正在寻找 / 生成应用…</div></div>";'
-        +'  lastNonce=++nonce;'
-        +'  parent.postMessage({type:"storegen",topic:kw,nonce:lastNonce},"*");'
-        +'}'
-        +'document.getElementById("storeGo").onclick=doSearch;'
-        +'q.onkeydown=function(e){if(e.key==="Enter"){doSearch();q.blur()}};'
-        +'window.addEventListener("message",function(e){'
-        +'  if(!e.data||e.data.type!=="storedata")return;'
-        +'  if(e.data.nonce&&e.data.nonce!==lastNonce)return;'
-        +'  var kw=e.data.keyword||"应用",apps=e.data.data&&e.data.data.apps;'
-        +'  var html="";'
-        +'  if(apps&&apps.length){apps.forEach(function(a){html+=cardHTML(String(a.name||kw),String(a.desc||"一款新奇的应用"),String(a.emoji||P(emos)))})}'
-        +'  html=cardHTML(kw,"为你现场生成的应用 · 点击获取即可打开","✦")+html;'
-        +'  list.innerHTML=html;bindInstall();'
-        +'});'
+        +'<div id="stList"></div>'
+        +'<div class="foot">应用均由官方上架 · 安全检测通过</div></div>'
+        +'<div class="dtl" id="dtl"></div>',
+      js:js
     });
   };
-
 
 })();

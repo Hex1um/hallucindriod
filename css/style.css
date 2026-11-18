@@ -169,6 +169,11 @@ body{display:flex;align-items:center;justify-content:center;background:radial-gr
 .ls-arrow{font-size:22px;animation:up 1.6s ease-in-out infinite}
 @keyframes up{0%,100%{transform:translateY(4px);opacity:.4}50%{transform:translateY(-3px);opacity:1}}
 
+.ext-back{position:absolute;left:10px;top:10px;z-index:60;width:34px;height:34px;border-radius:50%;
+  border:none;background:rgba(0,0,0,.45);color:#fff;font-size:19px;line-height:1;display:flex;
+  align-items:center;justify-content:center;backdrop-filter:blur(6px);cursor:pointer}
+.ext-back:active{background:rgba(0,0,0,.7)}
+
 /* ============ 移动端全屏 ============ */
 @media (max-width:520px){
   body{background:#000}

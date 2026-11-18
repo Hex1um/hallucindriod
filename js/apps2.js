@@ -513,6 +513,25 @@
       +'.qempty b{display:block;font-size:14px;color:#c9cad6;margin-bottom:8px}'
       +'.qempty span{font-size:11.5px;line-height:1.7}'
       +'.qempty button{margin-top:18px;border:none;border-radius:999px;padding:10px 24px;background:#3b82f6;color:#fff;font-size:12.5px;font-weight:600;cursor:pointer}'
+      +'.qh{display:flex;align-items:center;gap:11px;padding:14px 16px 6px}'
+      +'.qava{width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg,#4ade80,#16a34a);display:flex;align-items:center;justify-content:center;font-size:19px;font-weight:700;color:#fff;flex-shrink:0}'
+      +'.qinfo{flex:1;min-width:0}'
+      +'.qinfo b{display:block;font-size:16px;font-weight:700}'
+      +'.qinfo span{display:block;font-size:10.5px;color:#8b90a5;margin-top:3px}'
+      +'.qadd{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#e6e7ee;font-size:23px;font-weight:300;cursor:pointer;flex-shrink:0}'
+      +'.qadd:active{background:rgba(255,255,255,.1)}'
+      +'.qsearch2{margin:12px 16px 4px;background:rgba(255,255,255,.09);border-radius:11px;padding:11px;font-size:13px;color:#9aa0b5;text-align:center;cursor:pointer}'
+      +'.qwin{display:flex;align-items:center;gap:9px;padding:13px 16px;color:#9aa0b5;font-size:12.5px;cursor:pointer}'
+      +'.qwin .wi{font-size:15px}'
+      +'.qwin .ar{margin-left:auto;color:#4b5060;font-size:15px}'
+      +'.qtag{font-size:9px;color:#8b90a5;background:rgba(255,255,255,.08);border-radius:4px;padding:1px 5px;font-weight:400;flex-shrink:0}'
+      +'.qdot{min-width:18px;height:18px;border-radius:999px;background:#f23030;color:#fff;font-size:10px;display:flex;align-items:center;justify-content:center;padding:0 5px;font-weight:600}'
+      +'.qmute{font-size:11px;opacity:.55}'
+      +'.qtab3{position:sticky;bottom:0;height:56px;display:flex;align-items:center;background:#12141a;border-top:1px solid rgba(255,255,255,.06);flex-shrink:0}'
+      +'.qt3{flex:1;text-align:center;font-size:9.5px;color:#8b90a5;cursor:pointer;position:relative}'
+      +'.qt3 .ti{display:block;font-size:20px;margin-bottom:1px;line-height:1.2}'
+      +'.qt3.on{color:#3b82f6;font-weight:600}'
+      +'.qt3 .n{position:absolute;top:-2px;left:calc(50% + 9px);background:#f23030;color:#fff;border-radius:999px;font-size:9px;padding:1px 4px;line-height:1.3}'
       +'.qtop{display:flex;align-items:center;gap:15px;padding:11px 14px 4px}'
       +'.qtop .ic{font-size:19px;color:#d5d7e0;line-height:1;cursor:pointer;flex-shrink:0}'
       +'.qtop .ic:active{opacity:.55}'
@@ -593,62 +612,52 @@ function renderRegister(){
 function renderMain(){
   var f=S.friends||[];
   var unreadAll=f.reduce(function(a,x){return a+(Number(x.unread)||0)},0);
-  var listHtml='';
-  if(f.length){
-    // 互动消息：取第一个好友生成一条"赞了你分享的视频"
-    var who=(f[0]&&f[0].name)||'好友';
-    listHtml+='<div class="qrow" id="interactRow"><div class="ra pinkav">⚡</div>'
-      +'<div class="rm"><div class="rn">互动消息</div>'
-      +'<div class="rp">'+esc(who)+' 赞了你分享的视频</div></div>'
-      +'<div class="rr"><span class="rt">11分钟前</span><span class="qbadge">10</span></div></div>';
-  }
+  var myName=(S.profile&&S.profile.name)||'我';
+  var rows='';
   if(!f.length){
-    listHtml+='<div class="qempty"><div class="ic">👥</div><b>还没有好友</b>'
-      +'<span>点击右上角 + 搜索用户名添加好友<br>对方不存在时会为你生成一个聊天对象</span>'
+    rows='<div class="qempty"><div class="ic">👥</div><b>还没有好友</b>'
+      +'<span>点右上角 ＋ 搜索用户名添加<br>对方不存在时会为你生成一个聊天对象</span>'
       +'<button id="addFirst">添加好友</button></div>';
   }else{
-    listHtml+=f.map(function(x,i){
+    rows=f.map(function(x,i){
       var un=Number(x.unread)||0;
       var hasMsgs=(x.msgs&&x.msgs.length>1);
       var prefix=(un===0&&hasMsgs)?'已读 · ':'';
-      var badge=(x.badge&&String(x.badge).trim())?('<span class="qfire">'+esc(String(x.badge).trim())+'</span>'):'';
-      return '<div class="qrow" data-i="'+i+'"><div class="ra" style="background:'+GRADS[i%GRADS.length]+'">'+esc(x.avatar||'👤')+'</div>'
-        +'<div class="rm"><div class="rn">'+esc(x.name||'好友')+badge+'</div>'
+      var tag=(x.badge&&String(x.badge).trim())?('<span class="qtag">'+esc(String(x.badge).trim())+'</span>'):'';
+      var mute=x.muted?'<span class="qmute">🔕</span>':'';
+      var ava=esc(x.avatar||'👤');
+      return '<div class="qrow" data-i="'+i+'">'
+        +'<div class="ra" style="background:'+GRADS[i%GRADS.length]+'">'+ava+'</div>'
+        +'<div class="rm"><div class="rn">'+esc(x.name||'好友')+tag+'</div>'
         +'<div class="rp">'+prefix+esc(lastOf(x))+'</div></div>'
         +'<div class="rr"><span class="rt">'+ago(x.ts||(x.msgs&&x.msgs.length?x.msgs[x.msgs.length-1].ts:0))+'</span>'
-        +(un>0?'<span class="qbadge">'+un+'</span>':'')+'</div></div>';
+        +(un>0?'<span class="qdot">'+(un>99?'99+':un)+'</span>':'')+mute+'</div></div>';
     }).join('');
   }
-  var subs=[['限时日常','🐱',true],['不自卑再改','🤍',false],['Supertlee','🐷',false],['AAA火鸡面','⬛',false],['她若知我','🎀',false]];
-  var subsHtml=subs.map(function(x){
-    return '<div class="qsub"><div class="sa" style="background:'+GRADS[Math.floor(Math.random()*GRADS.length)]+'">'+x[1]
-      +(x[2]?'<span class="plus">+</span>':'')+'</div><div class="sn">'+x[0]+'</div></div>';
-  }).join('');
   app.innerHTML='<div class="qq">'
-    +'<div class="qtop"><span class="ic" id="qmenu">☰</span><span class="ic">👕</span>'
-    +'<span class="title">消息</span><span class="ic" id="qsearch">⌕</span><span class="ic" id="qplus">⊕</span></div>'
-    +'<div class="qsubs">'+subsHtml+'</div>'
-    +'<div class="qlist">'+listHtml+'</div>'
-    +'<div class="qdbar"><div class="qdb" data-t="home"><span class="ti">🏠</span>首页</div>'
-    +'<div class="qdb" data-t="friends"><span class="ti">👥</span>朋友</div>'
-    +'<div class="qdb plus" data-t="plus"><span class="ti">+</span></div>'
-    +'<div class="qdb on" data-t="msg"><span class="ti">💬</span>消息'+(unreadAll>0?'<span class="n">'+unreadAll+'</span>':'')+'</div>'
-    +'<div class="qdb" data-t="me"><span class="ti">👤</span>我</div></div></div>';
+    +'<div class="qh">'
+      +'<div class="qava">'+esc(myName.slice(0,1))+'</div>'
+      +'<div class="qinfo"><b>'+esc(myName)+'</b><span>● 在线 · WiFi · 睡觉中</span></div>'
+      +'<div class="qadd" id="qplus">＋</div>'
+    +'</div>'
+    +'<div class="qsearch2" id="qsearch">⌕　搜索</div>'
+    +'<div class="qwin"><span class="wi">💻</span><span>已登录 Windows</span><span class="ar">›</span></div>'
+    +'<div class="qlist">'+rows+'</div>'
+    +'<div class="qtab3">'
+      +'<div class="qt3 on" data-t="msg"><span class="ti">💬</span>消息'+(unreadAll>0?'<span class="n">'+(unreadAll>99?'99+':unreadAll)+'</span>':'')+'</div>'
+      +'<div class="qt3" data-t="contact"><span class="ti">👤</span>联系人</div>'
+      +'<div class="qt3" data-t="feed"><span class="ti">🔄</span>动态</div>'
+    +'</div></div>';
   document.getElementById('qplus').onclick=openAdd;
   document.getElementById('qsearch').onclick=openAdd;
-  document.getElementById('qmenu').onclick=function(){openSheet('菜单','个人资料<br>设置<br>夜间模式<br>关于')};
   var af=document.getElementById('addFirst'); if(af)af.onclick=openAdd;
-  var ir=document.getElementById('interactRow');
-  if(ir)ir.onclick=function(){openSheet('互动消息',esc((f[0]&&f[0].name)||'好友')+' 赞了你分享的视频<br><br>· 2 分钟前 赞了你的视频<br>· 1 小时前 评论了你<br>· 昨天 关注了你')};
-  app.querySelectorAll('.qrow[data-i]').forEach(function(r){r.onclick=function(){openChat(Number(this.getAttribute('data-i')))}});
-  app.querySelectorAll('.qsub').forEach(function(x){x.onclick=function(){openSheet('订阅号','来自订阅号的更新<br><br>· 限时日常：今天的日常<br>· Supertlee：分享了一个视频<br>· AAA火鸡面：新品上架')}});
-  app.querySelectorAll('.qdb').forEach(function(t){t.onclick=function(){
+  app.querySelectorAll('.qrow').forEach(function(r){r.onclick=function(){openChat(Number(this.getAttribute('data-i')))}});
+  app.querySelectorAll('.qt3').forEach(function(t){t.onclick=function(){
     var k=this.getAttribute('data-t');
-    if(k==='plus'){openAdd();return}
-    app.querySelectorAll('.qdb').forEach(function(x){x.classList.remove('on')});this.classList.add('on');
-    if(k==='home')openSheet('首页','这是你的首页<br><br>· 好友动态<br>· 推荐内容<br>· 热门话题');
-    if(k==='friends')openSheet('朋友','好友 '+(f.length)+' 人<br><br>'+(f.length?f.map(function(x){return '· '+esc(x.name)}).join('<br>'):'还没有好友，点 + 添加'));
-    if(k==='me')openSheet('我','👤 '+esc((S.profile&&S.profile.name)||'幻卓用户')+'<br><br>好友 '+f.length+' 人<br>在线状态：WiFi<br>等级：Lv1');
+    app.querySelectorAll('.qt3').forEach(function(x){x.classList.remove('on')});this.classList.add('on');
+    if(k==='msg')return;
+    if(k==='contact')openSheet('联系人',f.length?f.map(function(x){return '· '+esc(x.name)+(x.badge?'  '+esc(String(x.badge)):'')}).join('<br>'):'还没有联系人，先到消息页添加好友');
+    if(k==='feed')openSheet('动态','暂无好友动态<br><br>添加好友后，这里会显示他们的分享');
   }});
 }
 function openAdd(){
@@ -988,8 +997,12 @@ render();`;
     topic=(topic||'神秘应用').slice(0,12);
     const L=(typeof window.__LLM!=='undefined'&&window.__LLM)?window.__LLM:null;
     const pal=neonPalette(), adj=pick(WORDS.adjectives), noun=pick(WORDS.nouns);
-    const features=(L&&Array.isArray(L.features)&&L.features.length)?L.features:pickN(['语音吐槽','AI 算命','自动摸鱼','量子记账','情绪识别','赛博祈福','智能找借口','梦境回放','反向打卡','电子木鱼'],3);
-    const tagline=(L&&L.tagline)?L.tagline:(adj+noun+' · 由 AI 生成，独一无二');
+    const PH=/^(功能|feature)\s*\d+$/i;
+    const rawF=(L&&Array.isArray(L.features))?L.features:[];
+    const cleanF=rawF.filter(f=>typeof f==='string'&&f.trim()&&!PH.test(f.trim()));
+    const features=cleanF.length>=2?cleanF.slice(0,3):pickN(['语音吐槽','AI 算命','自动摸鱼','量子记账','情绪识别','赛博祈福','智能找借口','梦境回放','反向打卡','电子木鱼'],3);
+    const badTag=/一句.*广告语|20字内/i;
+    const tagline=(L&&L.tagline&&!badTag.test(L.tagline))?L.tagline:(adj+noun+' · 由 AI 生成，独一无二');
     const fl=features.map(f=>'<div class="gf"><span>✦</span><div><b>'+f+'</b><small>由'+(L?'在线服务':'本地引擎')+'实时驱动</small></div></div>').join('');
     return shell({
       title:topic, icon:'✦', accent:pal.a,

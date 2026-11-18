@@ -39,7 +39,6 @@ const ICONS={
 // 内置应用（拟真图标 / 名称 / 品牌渐变 / 搜索关键词）
 const APPS = [
   { id:'terminal',   name:'智能终端', icon:'✦', grad:['#8b5cf6','#5b21b6'], kw:'智能终端 AI 助手 语音 助理 自动 执行 豆包' },
-  { id:'calculator', name:'计算器',   icon:'🧮', grad:['#ffb340','#ff7a18'], kw:'计算 算数 数学 加减乘除' },
   { id:'weather',    name:'天气',     icon:'⛅', grad:['#5ec8ff','#1a73e8'], kw:'天气 气温 预报 下雨' },
   { id:'album',      name:'相册',     icon:'🖼️', grad:['#ff8fb1','#c44df0'], kw:'相册 照片 图片 图库' },
   { id:'music',      name:'音乐',     icon:'🎵', grad:['#ff6b6b','#c2185b'], kw:'音乐 歌曲 播放器 听歌' },
@@ -49,7 +48,7 @@ const APPS = [
   { id:'store',      name:'应用商店', icon:'🛍️', grad:['#ff9a44','#f4511e'], kw:'商店 市场 下载 安装' },
   { id:'browser',    name:'浏览器',   icon:'🌐', grad:['#48c6ef','#1a73e8'], kw:'浏览器 上网 网页 搜索' },
   { id:'camera',     name:'相机',     icon:'📷', grad:['#9aa4b2','#3b4452'], kw:'相机 拍照 摄影 照片' },
-  { id:'messages',   name:'短信',     icon:'💬', grad:['#5ce36b','#16a34a'], kw:'短信 消息 聊天 对话' },
+  { id:'messages',   name:'云讯',     icon:'💬', grad:['#5ce36b','#16a34a'], kw:'短信 消息 聊天 对话' },
   { id:'phone',      name:'电话',     icon:'📞', grad:['#5ce36b','#128c3e'], kw:'电话 拨号 通话' },
   { id:'settings',   name:'设置',     icon:'⚙️', grad:['#9aa4b2','#4b5563'], kw:'设置 系统 关于 配置' },
 ];

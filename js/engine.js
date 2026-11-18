@@ -212,8 +212,15 @@
 
   function closeApp(){
     // 保存当前视图快照：再次进入直接恢复，不重新初始化（浏览器由 webState 单独管理）
-    if(currentId && currentId!=='browser' && frame.srcdoc && frame.srcdoc.length>200){
+    if(currentId && currentId!=='browser' && currentId!=='__external__' && frame.srcdoc && frame.srcdoc.length>200){
       viewCache[currentId]=frame.srcdoc;
+    }
+    // 外部应用：卸载站点、恢复默认沙箱
+    if(currentId==='__external__'){
+      try{ frame.removeAttribute('src'); }catch(e){}
+      frame.setAttribute('sandbox',FRAME_SANDBOX);
+      const back=document.getElementById('extBack');
+      if(back)back.hidden=true;
     }
     currentId=null;currentName=null;
     appLayer.hidden=true;
@@ -413,73 +420,26 @@
     };
   }
 
-  // 打开外部 Web 应用：直接加载站点，不经过大模型、不缓存生成内容
+  // 打开外部 Web 应用：直接 src 加载站点。
+  // 关键：去掉 iframe 的 sandbox —— 否则 opaque origin 会让站点的 localStorage 抛异常，
+  // 页面脚本中断后所有按钮都会失效（borderops 就是这样挂掉的）。
+  const FRAME_SANDBOX='allow-scripts allow-forms allow-modals allow-popups';
   function openExternal(url,name){
     if(busy)return;
     noteUserActivity();
     currentId='__external__';currentName=name||'外部应用';
     if(window.HOS&&window.HOS.closePanels)window.HOS.closePanels();
-    const title=String(name||'外部应用');
-    const safeUrl=String(url||'').replace(/"/g,'%22');
-    const html=`<!DOCTYPE html><html><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<style>
-html,body{margin:0;height:100%;background:#0b0d12;overflow:hidden}
-iframe{width:100%;height:100%;border:0;display:block}
-.bar{position:fixed;left:0;right:0;top:0;height:38px;display:flex;align-items:center;gap:8px;
-background:rgba(12,14,20,.86);backdrop-filter:blur(10px);z-index:9;padding:0 8px}
-.xb{width:28px;height:28px;border-radius:50%;border:none;background:rgba(255,255,255,.14);color:#fff;font-size:17px;line-height:1;cursor:pointer}
-.tt{color:#e6e7ee;font-size:12.5px;font-weight:600}
-.wrap{position:absolute;inset:38px 0 0 0}
-</style></head><body>
-<div class="bar"><button class="xb" onclick="parent.postMessage({type:'close'},'*')">‹</button><span class="tt">${title}</span></div>
-<div class="wrap"><iframe src="${safeUrl}" allow="fullscreen; clipboard-write"></iframe></div>
-</body></html>`;
-    frame.srcdoc=html;
     genLayer.hidden=true;
     appLayer.hidden=false;
-  }
-
-  // 应用关联图：打开 A 时，预判接下来最可能打开哪些
-  const AFFINITY={
-    delivery:['video','messages','music'],
-    video:['delivery','music','messages'],
-    messages:['phone','video','delivery'],
-    music:['video','messages'],
-    album:['camera','delivery'],
-    camera:['album'],
-    browser:['store','video'],
-    store:['browser','video'],
-    weather:['map','delivery'],
-    map:['weather','delivery'],
-    phone:['messages'],
-    calculator:['terminal'],
-    settings:[],
-    terminal:['delivery','video','messages']
-  };
-  // 关联预取队列：两两并发推进，去重且不重复请求
-  const prefetchQueue=[];
-  let draining=false;
-  function prefetchRelated(id){
-    (AFFINITY[id]||[]).forEach(a=>{
-      if(a==='terminal'||a==='browser')return;
-      if(a in dataCache||pending[a])return;
-      if(prefetchQueue.indexOf(a)>=0)return;
-      prefetchQueue.push(a);
-    });
-    drainPrefetch();
-  }
-  async function drainPrefetch(){
-    if(draining||!prefetchQueue.length)return;
-    draining=true;
-    while(prefetchQueue.length){
-      const batch=prefetchQueue.splice(0,2);
-      await Promise.all(batch.map(a=>{
-        const app=APPS.find(x=>x.id===a);
-        return app?preload(a,app.name).catch(()=>null):Promise.resolve(null);
-      }));
+    // 放宽沙箱，保证站点能正常读写本地存储、运行完整脚本
+    frame.setAttribute('sandbox','allow-scripts allow-same-origin allow-forms allow-modals allow-popups allow-downloads allow-popups-to-escape-sandbox');
+    frame.removeAttribute('srcdoc');
+    frame.src=url;
+    const back=document.getElementById('extBack');
+    if(back){
+      back.hidden=false;
+      back.onclick=closeApp;
     }
-    draining=false;
   }
 
   // 接收 iframe 内部消息
@@ -505,6 +465,24 @@ background:rgba(12,14,20,.86);backdrop-filter:blur(10px);z-index:9;padding:0 8px
     }
     else if(e.data.type==='social:addfriend')socialAddFriend(e.data.name);
     else if(e.data.type==='social:reply')socialReply(String(e.data.friend||''),String(e.data.text||''));
+    else if(e.data.type==='tone'){
+      if(window.AUDIO)window.AUDIO.tone(Number(e.data.freq)||0,Number(e.data.dur)||0.25,Number(e.data.vol)||0.1,String(e.data.wave||'sine'));
+    }
+    else if(e.data.type==='install'){
+      const a=e.data.app||{};
+      const nm=String(a.name||'').trim().slice(0,16);
+      if(!nm)return;
+      const list=window.__INSTALLED||(window.__INSTALLED=[]);
+      if(list.some(x=>x.name===nm)){
+        if(window.HOS&&window.HOS.toast)window.HOS.toast('「'+nm+'」已在桌面');
+        return;
+      }
+      let hh=0;for(let i=0;i<nm.length;i++)hh=(hh*31+nm.charCodeAt(i))>>>0;
+      list.push({id:'custom_'+hh.toString(36),name:nm,emoji:String(a.emoji||'✦'),desc:String(a.desc||''),installedAt:Date.now()});
+      if(window.HOS&&window.HOS.saveInstalled)window.HOS.saveInstalled(list);
+      if(window.HOS&&window.HOS.refreshIcons)window.HOS.refreshIcons();
+      if(window.HOS&&window.HOS.toast)window.HOS.toast('「'+nm+'」已添加到桌面');
+    }
     else if(e.data.type==='musicsearch'){
       const q=String(e.data.q||'').trim(), nonce=e.data.nonce;
       noteUserActivity();
