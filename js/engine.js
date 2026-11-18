@@ -247,6 +247,11 @@
       currentDNA=null;
     }else{
       currentDNA={v:DNA_VER,i:id,n:name,d:llmData||null,t:Date.now()};
+      // 若是超时降级渲染（数据还没回来），后台继续等，拿到后补进快照
+      if(!llmData && forced===undefined && id!=='browser'){
+        const dnaRef=currentDNA;
+        llmPromise.then(d=>{ if(d&&dnaRef) dnaRef.d=d; }).catch(()=>{});
+      }
     }
     const sb=document.getElementById('dnaShare');
     if(sb){
@@ -608,7 +613,15 @@
   // 生成分享链接（当前应用有 DNA 才可用）
   async function buildShareLink(){
     if(!currentDNA)return null;
-    const code=await encodeDNA(currentDNA);
+    const snap=currentDNA;
+    let data=snap.d;
+    // 快照不完整（首次渲染超时降级）：现场再取一次，保证对方看到同一份内容
+    if(data===null && snap.i!=='browser'){
+      if(window.HOS&&window.HOS.toast)window.HOS.toast('正在冻结当前页面…');
+      try{ data=await preload(snap.i,snap.n); }catch(e){ data=null }
+      if(data)snap.d=data;
+    }
+    const code=await encodeDNA({v:DNA_VER,i:snap.i,n:snap.n,d:data,t:snap.t});
     return location.origin+location.pathname+'#dna='+encodeURIComponent(code);
   }
 
@@ -629,6 +642,10 @@
     const link=await buildShareLink();
     if(!link){ if(window.HOS&&window.HOS.toast)window.HOS.toast('这个页面还没有可分享的快照'); return }
     if(link.length>16000){ if(window.HOS&&window.HOS.toast)window.HOS.toast('内容太大，链接过长'); return }
+    if(currentDNA && currentDNA.d===null && currentDNA.i!=='browser'){
+      if(window.HOS&&window.HOS.toast)window.HOS.toast('当前无网络，冻结失败；请稍后重试');
+      return;
+    }
 
     const sheet=document.getElementById('dnaSheet');
     const input=document.getElementById('dsLink');
