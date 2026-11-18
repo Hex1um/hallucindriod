@@ -10,6 +10,7 @@
   // 所有应用共用的外壳 + 基础样式
   function shell(cfg){
     const accent = cfg.accent || '#a78bfa';
+    const bare = !!cfg.bare;
     return '<!DOCTYPE html><html lang="zh-CN"><head><meta charset="utf-8">'
     + '<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">'
     + '<style>'
@@ -23,20 +24,23 @@
     + '.ab-btn{border:none;background:none;color:var(--ac);font-size:14px;padding:8px 10px;cursor:pointer;min-width:52px}'
     + '.ab-btn:active{opacity:.5}'
     + '.ab-title{font-size:14px;font-weight:700;display:flex;align-items:center;gap:6px}'
-    + '.ab-badge{flex:0 0 auto;font-size:9.5px;color:#7c8096;text-align:center;padding:6px;letter-spacing:.2px;'
-    + 'background:rgba(167,139,250,.06);border-bottom:1px solid rgba(255,255,255,.05)}'
     + '.ab-body{flex:1;min-height:0;overflow-y:auto;scrollbar-width:none}'
     + '.ab-body::-webkit-scrollbar{display:none}'
+    + '.fab-back{position:fixed;right:12px;bottom:74px;z-index:60;width:32px;height:32px;border:none;border-radius:50%;'
+    + 'background:rgba(0,0,0,.38);color:#fff;font-size:17px;line-height:1;display:flex;align-items:center;justify-content:center;'
+    + 'backdrop-filter:blur(6px);cursor:pointer}'
+    + '.fab-back:active{background:rgba(0,0,0,.6)}'
     + '.card{background:rgba(255,255,255,.045);border:1px solid rgba(255,255,255,.07);border-radius:16px}'
     + '.muted{color:#8b90a5}'
     + (cfg.css||'')
     + '</style></head><body>'
-    + '<div class="abar">'
-    + '<button class="ab-btn" onclick="parent.postMessage({type:\'close\'},\'*\')">‹ 返回</button>'
-    + '<div class="ab-title">'+(cfg.icon||'✦')+' '+(cfg.title||'应用')+'</div>'
-    + '<span class="ab-btn" style="text-align:right" aria-hidden="true"></span>'
-    + '</div>'
-    + '<div class="ab-badge">数据更新于刚刚 · 版本 1.0</div>'
+    + (bare
+        ? '<button class="fab-back" onclick="parent.postMessage({type:\'close\'},\'*\')" aria-label="返回">‹</button>'
+        : '<div class="abar">'
+          + '<button class="ab-btn" onclick="parent.postMessage({type:\'close\'},\'*\')">‹ 返回</button>'
+          + '<div class="ab-title">'+(cfg.icon||'✦')+' '+(cfg.title||'应用')+'</div>'
+          + '<span class="ab-btn" style="text-align:right" aria-hidden="true"></span>'
+          + '</div>')
     + '<div class="ab-body">'+(cfg.html||'')+'</div>'
     + '<script>'+(cfg.js||'')+'</script>'
     + '</body></html>';

@@ -38,6 +38,7 @@ const ICONS={
 
 // 内置应用（拟真图标 / 名称 / 品牌渐变 / 搜索关键词）
 const APPS = [
+  { id:'terminal',   name:'智能终端', icon:'✦', grad:['#8b5cf6','#5b21b6'], kw:'智能终端 AI 助手 语音 助理 自动 执行 豆包' },
   { id:'calculator', name:'计算器',   icon:'🧮', grad:['#ffb340','#ff7a18'], kw:'计算 算数 数学 加减乘除' },
   { id:'weather',    name:'天气',     icon:'⛅', grad:['#5ec8ff','#1a73e8'], kw:'天气 气温 预报 下雨' },
   { id:'album',      name:'相册',     icon:'🖼️', grad:['#ff8fb1','#c44df0'], kw:'相册 照片 图片 图库' },
@@ -51,7 +52,6 @@ const APPS = [
   { id:'messages',   name:'短信',     icon:'💬', grad:['#5ce36b','#16a34a'], kw:'短信 消息 聊天 对话' },
   { id:'phone',      name:'电话',     icon:'📞', grad:['#5ce36b','#128c3e'], kw:'电话 拨号 通话' },
   { id:'settings',   name:'设置',     icon:'⚙️', grad:['#9aa4b2','#4b5563'], kw:'设置 系统 关于 配置' },
-  { id:'terminal',   name:'智能终端', icon:'✦', grad:['#8b5cf6','#5b21b6'], kw:'智能终端 AI 助手 语音 助理 自动 执行 豆包' },
 ];
 APPS.forEach(a=>{ a.svg=ICONS[a.id]; });
 

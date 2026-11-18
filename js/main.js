@@ -9,6 +9,21 @@
   const controlCenter=$('controlCenter');
   const lockscreen=$('lockscreen'),toastEl=$('toast');
 
+  // ---------- 社交数据（父窗口持久化，iframe 通过 postMessage 读写） ----------
+  const SOCIAL_KEY='huandroid_social_v1';
+  function loadSocial(){
+    try{
+      const raw=localStorage.getItem(SOCIAL_KEY);
+      const o=raw?JSON.parse(raw):null;
+      if(o&&typeof o==='object')return {profile:o.profile||null,friends:Array.isArray(o.friends)?o.friends:[]};
+    }catch(e){}
+    return {profile:null,friends:[]};
+  }
+  function saveSocial(d){
+    try{ localStorage.setItem(SOCIAL_KEY,JSON.stringify(d)); }catch(e){}
+  }
+  window.__SOCIAL = loadSocial();
+
   // ---------- 图标 ----------
   function iconInner(app){
     const svg=app.svg||('<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:27px;background:linear-gradient(135deg,'+app.grad[0]+','+app.grad[1]+')">'+app.icon+'</div>');
@@ -180,7 +195,10 @@
     refreshIcons(){renderIcons()},
     openDrawer,closeDrawer,
     openControlCenter,closeControlCenter,
-    setToggle,lockScreen
+    setToggle,lockScreen,
+    get social(){ return window.__SOCIAL; },
+    saveSocial,
+    reloadSocial(){ window.__SOCIAL=loadSocial(); return window.__SOCIAL; }
   };
 
   // ---------- 启动 ----------

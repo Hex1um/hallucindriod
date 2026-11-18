@@ -330,6 +330,80 @@
     if(actions.length)setTimeout(()=>executeActions(actions),420);
   }
 
+  // ---------- 社交：注册 / 加好友 / 聊天回复 ----------
+  function socialPush(msg){
+    if(frame&&frame.contentWindow){ try{ frame.contentWindow.postMessage(msg,'*'); }catch(e){} }
+  }
+  function persistSocial(){
+    if(window.HOS&&window.HOS.saveSocial)window.HOS.saveSocial(window.__SOCIAL);
+  }
+  async function socialAddFriend(rawName){
+    const name=String(rawName||'').trim().slice(0,12);
+    if(!name)return;
+    const social=window.__SOCIAL||(window.__SOCIAL={profile:null,friends:[]});
+    if(!Array.isArray(social.friends))social.friends=[];
+    const exist=social.friends.find(f=>f.name===name);
+    if(exist){ socialPush({type:'social:friend',friend:exist,exists:true}); return; }
+    // 1) 先尝试找真人（WebRTC P2P）
+    let friend=null;
+    if(window.P2P&&window.P2P.findUser){
+      try{ friend=await window.P2P.findUser(name); }catch(e){ friend=null; }
+    }
+    // 2) 真人不存在 → LLM 生成一个人设账户（保证一定搜得到）
+    if(!friend){
+      let d=null;
+      if(window.LLM){ try{ d=await window.LLM.fetchHallucination('friend',name); }catch(e){ d=null; } }
+      friend={
+        name:name,
+        avatar:(d&&d.avatar)||pick(['🐱','🌙','🐷','🦊','🎧','🌟','🍀']),
+        level:(d&&d.level)||('Lv'+randInt(1,9)),
+        bio:(d&&d.bio)||'这个人很神秘，什么都没留下',
+        isAI:true,
+        msgs:[{me:false,text:(d&&d.greeting)||('你好，我是'+name),ts:Date.now()}]
+      };
+    } else {
+      friend.isAI=false;
+      if(!Array.isArray(friend.msgs))friend.msgs=[];
+    }
+    social.friends.unshift(friend);
+    persistSocial();
+    socialPush({type:'social:friend',friend:friend,exists:false});
+  }
+  async function socialReply(friendName,text){
+    // 真人好友：直接走 P2P 发出（对方在线才发得出去）
+    const social=window.__SOCIAL||{friends:[]};
+    const f=(social.friends||[]).find(x=>x.name===friendName);
+    if(f && !f.isAI && f.peerId && window.P2P && window.P2P.send(f.peerId,{t:'msg',text:text,ts:Date.now()})){
+      return;
+    }
+    let reply='';
+    if(window.LLM){
+      const ctx=JSON.stringify({me:(social.profile&&social.profile.name)||'我',other:friendName,say:text});
+      try{
+        const d=await window.LLM.fetchHallucination('chatreply',ctx);
+        if(d&&d.reply)reply=String(d.reply);
+      }catch(e){}
+    }
+    if(!reply)reply=pick(['在的','哈哈哈哈','确实','让我想想','你说得对','嗯嗯，然后呢','这个我也有同感','稍等，我看一下']);
+    socialPush({type:'social:reply',friend:friendName,text:reply});
+  }
+
+  // 收到真人消息 → 写进好友会话并推给界面
+  function bindP2PInbox(){
+    if(!window.P2P)return;
+    window.P2P.onMessage=function(peerId,msg){
+      const social=window.__SOCIAL||(window.__SOCIAL={profile:null,friends:[]});
+      const f=(social.friends||[]).find(x=>x.peerId===peerId);
+      if(!f)return;
+      if(!Array.isArray(f.msgs))f.msgs=[];
+      f.msgs.push({me:false,text:msg.text,ts:msg.ts});
+      f.ts=msg.ts; f.unread=(Number(f.unread)||0)+1;
+      persistSocial();
+      socialPush({type:'social:reply',friend:f.name,text:msg.text});
+      if(window.HOS&&window.HOS.toast)window.HOS.toast('新消息：'+f.name);
+    };
+  }
+
   // 接收 iframe 内部消息
   window.addEventListener('message',function(e){
     if(!e.data||typeof e.data!=='object')return;
@@ -339,6 +413,24 @@
     else if(e.data.type==='storegen')llmGen('store',e.data.topic||'应用',e.data.nonce);
     else if(e.data.type==='termgen')termGen(String(e.data.text||''),e.data.nonce);
     else if(e.data.type==='webstate'){ webState={topic:e.data.topic||'',data:e.data.data||null}; }
+    else if(e.data.type==='social:register'){
+      const nm=String(e.data.name||'').trim().slice(0,12);
+      if(!nm)return;
+      const social=window.__SOCIAL||(window.__SOCIAL={profile:null,friends:[]});
+      social.profile={name:nm,avatar:'🙂',createdAt:Date.now()};
+      if(!Array.isArray(social.friends))social.friends=[];
+      persistSocial();
+      // 上线 P2P，让别人能通过用户名找到我（失败不影响本地体验）
+      if(window.P2P){ window.P2P.init(nm).catch(()=>{}); }
+      socialPush({type:'social:profile',profile:social.profile,friends:social.friends,p2p:window.P2P?window.P2P.status():null});
+    }
+    else if(e.data.type==='social:addfriend')socialAddFriend(e.data.name);
+    else if(e.data.type==='social:reply')socialReply(String(e.data.friend||''),String(e.data.text||''));
+    else if(e.data.type==='social:save'){
+      const social=window.__SOCIAL||(window.__SOCIAL={profile:null,friends:[]});
+      if(Array.isArray(e.data.friends))social.friends=e.data.friends;
+      persistSocial();
+    }
     else if(e.data.type==='refresh'){
       const rid=e.data.id||'';
       if(!rid||rid==='browser')webState=null;
@@ -355,4 +447,9 @@
   });
 
   window.ENGINE={openApp,closeApp,regen,warmup,refreshData,preload,hasCache};
+  bindP2PInbox();
+  // 已注册用户：启动时自动上线
+  if(window.P2P && window.__SOCIAL && window.__SOCIAL.profile && window.__SOCIAL.profile.name){
+    window.P2P.init(window.__SOCIAL.profile.name).catch(()=>{});
+  }
 })();

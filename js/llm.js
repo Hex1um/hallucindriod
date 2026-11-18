@@ -22,7 +22,7 @@
     weather: n=>`为天气App编内容。格式：{"city":"城市名","weather":"天气现象","temp":数字,"tip":"一句天气提示，20字内"}。主题：${n}`,
     notes:   n=>`编一条中文便签。格式：{"text":"便签正文，35字内","mood":"一个emoji","sign":"署名地点"}。主题：${n}`,
     store:   n=>`编3个中文App。格式：{"apps":[{"name":"App名","desc":"一句介绍，20字内","emoji":"一个emoji"}]}。主题：${n}`,
-    browser: n=>`为「${n}」这个主题设计一个精致的中文品牌官网首页内容。只输出一个纯JSON对象（不要markdown、字段必须齐全）：{"siteName":"网站/品牌名，2-6字","tagline":"品牌标语，8字内","heroTitle":"吸睛大标题，14字内","heroSub":"副标题文案，26字内","cta":"按钮文字，4字内","aboutTitle":"关于板块标题，如 关于我们","about":["第一段介绍，40字内","第二段介绍，40字内"],"features":[{"icon":"一个相关emoji","title":"特色标题，4-6字","desc":"一句话介绍，18字内"},{"icon":"emoji","title":"标题","desc":"介绍"},{"icon":"emoji","title":"标题","desc":"介绍"}],"stats":[{"num":"如 120万","label":"如 用户"},{"num":"数字+单位","label":"标签"},{"num":"数字+单位","label":"标签"}]}`,
+    browser: n=>`用户想打开「${n}」。先判断它是什么网站（社交/视频/购物/资讯/工具/企业等），据此设计一个符合该定位的中文网页首页。只输出纯JSON，字段齐全：{"siteName":"品牌名2-6字","tagline":"标语8字内","heroTitle":"大标题14字内","heroSub":"副标题26字内","cta":"按钮4字内","aboutTitle":"板块标题","about":"一段介绍50字内","features":[{"icon":"emoji","title":"4-6字","desc":"18字内"}],"stats":[{"num":"120万","label":"用户"},{"num":"4.9分","label":"评分"},{"num":"98%","label":"好评"}]}`,
     messages:n=>`为一个手机社交App生成消息页。格式：{"me":"我的昵称","status":"在线状态","subs":[{"name":"订阅号名","avatar":"一个emoji"}],"chats":[{"name":"昵称","preview":"最新动态，24字内","time":"刚刚","unread":数字0-99,"muted":false,"avatar":"一个emoji","badge":"Lv8","fire":数字0-99}]}。生成4个订阅号、6条消息，主题：${n}`,
     album:   n=>`编4张照片标题。格式：{"photos":[{"title":"照片标题，8字内","emoji":"一个emoji"}]}。主题：${n}`,
     fish:    n=>`编一个摸鱼检测结果。格式：{"verdict":"一句摸鱼结论，20字内","advice":"一句建议，15字内"}。主题：${n}`,
@@ -37,6 +37,8 @@
     delivery:n=>`为一个本地生活App生成首页。格式：{"city":"城市","rank":{"title":"榜单名如 吃喝玩乐指南","item":"榜单项标题18字内","tag":"热评榜第4名","dist":"2.9km"},"free":"免费试活动文案16字内","feed":[{"title":"图文标题20字内","author":"用户昵称","level":"Lv数字","likes":数字,"emoji":"一个emoji"}]}。生成4条图文，主题：${n}`,
     video:   n=>`为一个视频App生成推荐列表。格式：{"videos":[{"title":"视频标题22字内","up":"UP主名","views":"播放量如 1.3万","danmaku":"弹幕数如 3","dur":"时长如 1:06","cover":"一个emoji","hot":true或false}]}。生成6条视频，主题：${n}`,
     terminal:n=>`你是手机智能助手。用户指令：「${n}」。把指令解析成可执行动作，只输出纯JSON：{"reply":"对用户的自然语言回应，16字内","actions":[{"type":"动作类型","target":"目标值","label":"动作简述，8字内"}]}。可用动作：openApp(打开应用,target填应用名如 计算器/天气/相机/音乐/地图/浏览器/短信/电话/设置/应用商店)、closeApp(关闭当前应用)、toast(显示提示,target填提示文字)、toggle(开关,target填 wifi/蓝牙/手电筒/飞行模式/勿扰)、call(拨号,target填号码或联系人)、message(发短信,target填联系人)、browse(打开网页,target填主题或网址)、searchApp(应用商店搜索,target填关键词)。最多3个动作。`,
+    friend:  n=>`为一个网名叫「${n}」的聊天好友生成人设。格式：{"avatar":"一个emoji","level":"Lv数字","bio":"个性签名，16字内","greeting":"主动打招呼的一句话，20字内"}。只输出JSON。`,
+    chatreply:n=>`你在扮演一个聊天对象。根据下面的上下文用一句自然口语回复（20字内，口语化）。上下文：${n}。只输出JSON：{"reply":"你的回复"}`,
     calculator:n=>`为AI计算器生成两句话。格式：{"sign":"AI助手签名，8字内","tip":"算错结果时的吐槽，18字内"}。主题：${n}`
   };
 
@@ -169,13 +171,14 @@
     const conf=Math.max(0,Math.min(1,Number(cfg.confidence)));
     const isBrowser=id==='browser';
     const isTerminal=id==='terminal';
-    // 列表型应用（外卖/视频/消息）输出较长，给更多 token
-    const heavy=isBrowser?900:((id==='delivery'||id==='video'||id==='messages')?650:400);
+    // browser 生成完整官网 JSON 偏慢，但已精简字段；给 18s 窗口，超时再走备用源
+    const heavy=isBrowser?600:((id==='delivery'||id==='video'||id==='messages')?650:400);
     const ctx={sys:systemPrompt(conf,id),user:buildUserPrompt(id,name),temp:temperature(conf,id),maxTokens:heavy};
     // browser 要生成完整官网 JSON（约 15s），给足竞速窗口；
     // terminal 只是短 JSON 意图解析，给短窗口保证快速响应；其他应用保持默认
-    const fastWin=isBrowser?22000:(isTerminal?6500:RACE_FAST);
-    const backupWin=isBrowser?26000:(isTerminal?7000:RACE_BACKUP);
+    const isChat=(id==='friend'||id==='chatreply');
+    const fastWin=isBrowser?16000:((isTerminal||isChat)?6500:RACE_FAST);
+    const backupWin=isBrowser?20000:((isTerminal||isChat)?7000:RACE_BACKUP);
     window.__LLM_SOURCE='';
     window.__LLM_DIAG=[];
 
