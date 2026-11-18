@@ -727,24 +727,6 @@ function openAdd(){
     +'<div class="addres" id="addRes"></div></div>';
   ov.classList.add('on');
   document.getElementById('ovbk').onclick=function(){ov.classList.remove('on')};
-  document.getElementById('ovMore').onclick=function(ev){
-    ev.stopPropagation();
-    var old=document.querySelector('.mmenu'); if(old)old.parentNode.removeChild(old);
-    var m=document.createElement('div'); m.className='mmenu'; m.style.top='52px';
-    m.innerHTML='<div data-a="clear">清空聊天记录</div>'
-      +(f.isGroup?'<div class="danger" data-a="quit">退出群聊</div>':'<div class="danger" data-a="del">删除好友</div>');
-    ov.appendChild(m);
-    m.querySelectorAll('div').forEach(function(x){
-      x.onclick=function(e2){
-        e2.stopPropagation();
-        var a=this.getAttribute('data-a');
-        m.parentNode.removeChild(m);
-        if(a==='clear'){ f.msgs=[]; saveFriends(); openChat(S.friends.indexOf(f)); }
-        else{ if(!confirm(a==='del'?'删除好友「'+f.name+'」？':'退出群聊「'+f.name+'」？'))return;
-          S.friends=S.friends.filter(function(y){return y!==f}); saveFriends(); ov.classList.remove('on'); render(); }
-      };
-    });
-  };
   var inp=document.getElementById('addName'),go=document.getElementById('addGo'),res=document.getElementById('addRes');
   window.__probeName=null;
   function submit(){
@@ -843,6 +825,27 @@ function openChat(i){
   var body=document.getElementById('ovb'),inp=document.getElementById('ovi');
   body.scrollTop=body.scrollHeight;
   document.getElementById('ovbk').onclick=function(){ov.classList.remove('on')};
+  var __mo=document.getElementById("ovMore");
+  if(__mo){
+    document.getElementById('ovMore').onclick=function(ev){
+      ev.stopPropagation();
+      var old=document.querySelector('.mmenu'); if(old)old.parentNode.removeChild(old);
+      var m=document.createElement('div'); m.className='mmenu'; m.style.top='52px';
+      m.innerHTML='<div data-a="clear">清空聊天记录</div>'
+        +(f.isGroup?'<div class="danger" data-a="quit">退出群聊</div>':'<div class="danger" data-a="del">删除好友</div>');
+      ov.appendChild(m);
+      m.querySelectorAll('div').forEach(function(x){
+        x.onclick=function(e2){
+          e2.stopPropagation();
+          var a=this.getAttribute('data-a');
+          m.parentNode.removeChild(m);
+          if(a==='clear'){ f.msgs=[]; saveFriends(); openChat(S.friends.indexOf(f)); }
+          else{ if(!confirm(a==='del'?'删除好友「'+f.name+'」？':'退出群聊「'+f.name+'」？'))return;
+            S.friends=S.friends.filter(function(y){return y!==f}); saveFriends(); ov.classList.remove('on'); render(); }
+        };
+      });
+    };
+  }
   function send(){
     var v=(inp.value||'').trim(); if(!v)return;
     var d=document.createElement('div');d.className='bb me';d.textContent=v;body.appendChild(d);
@@ -1060,6 +1063,14 @@ render();`;
     const device=(L&&L.device)||('Hallucindriod · '+pick(['Pro','Ultra','SE']));
     const comment=(L&&L.comment)||'系统运行流畅';
     const cfg=(typeof window.__CFG!=='undefined'&&window.__CFG)?window.__CFG:{confidence:0.35,apiBase:'',apiKey:'',model:'openai-fast'};
+    const Dd=window.OS_DATA||{};
+    let W=null; try{ W=Dd.ensurePersona?Dd.ensurePersona():(Dd.ensureWorld?Dd.ensureWorld():null) }catch(e){ W=null }
+    const PERSONAS=Dd.PERSONAS||{};
+    const curPersona=(Dd.CONFIG&&Dd.CONFIG.persona)||'none';
+    const personaBtns=Object.keys(PERSONAS).map(k=>{
+      const P=PERSONAS[k];
+      return '<button class="pbtn'+(k===curPersona?' on':'')+'" data-p="'+k+'">'+P.name+'</button>';
+    }).join('');
     const conf=Number(cfg.confidence);
     const rows=[
       ['📱','设备名称',device],
@@ -1100,7 +1111,16 @@ render();`;
         +'.rrow{display:flex;align-items:center;gap:10px;padding:9px 14px;font-size:12.5px;border-top:1px solid rgba(255,255,255,.04)}'
         +'.rname{flex:1;color:#c9cad6}'
         +'.rbtn{border:none;border-radius:999px;padding:5px 12px;font-size:11px;background:rgba(255,255,255,.08);color:#b9bccb;cursor:pointer}'
-        +'.rbtn:active{background:rgba(124,58,237,.35);color:#fff}',
+        +'.rbtn:active{background:rgba(124,58,237,.35);color:#fff}'
+        +'.world{padding:14px}'
+        +'.wcity{font-size:20px;font-weight:700;color:#fff}'
+        +'.wrole{font-size:11.5px;color:#a78bfa;margin-top:4px}'
+        +'.wline{font-size:11.5px;color:#8b90a5;margin-top:8px;line-height:1.6}'
+        +'.wev{font-size:10.5px;color:#6f7488;margin-top:10px;line-height:1.8}'
+        +'.whint{font-size:10px;color:#5f6478;margin-top:10px;line-height:1.6}'
+        +'.prow{display:flex;flex-wrap:wrap;gap:8px;padding:14px}'
+        +'.pbtn{border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.05);color:#c9cad6;font-size:12px;padding:8px 14px;border-radius:999px;cursor:pointer}'
+        +'.pbtn.on{background:rgba(124,58,237,.35);border-color:rgba(124,58,237,.6);color:#fff;font-weight:600}',
       html:'<div class="se"><h3>系统设置</h3>'
         +'<div class="grp card conf"><div class="gl">🎚️ 现实置信度 · 内容风格</div>'
         +'<div class="conf-top"><span class="conf-val" id="cv">'+conf.toFixed(2)+'</span><span class="conf-mode" id="cm"></span></div>'
@@ -1116,6 +1136,16 @@ render();`;
         +'<label class="lbl">模型名</label>'
         +'<input id="model" placeholder="openai-fast" value="'+(cfg.model||'')+'">'
         +'<button class="save" id="saveCfg">保存设置</button></div>'
+        +'<div class="grp card"><div class="gl">🌍 世界</div>'
+        +'<div class="world"><div class="wcity">'+(W?W.city:'—')+'</div>'
+        +'<div class="wrole">'+(W&&W.persona?('今日身份 · '+W.persona.role):'今日身份 · 未定')+'</div>'
+        +'<div class="wline">'+(W&&W.persona?('「'+W.persona.line+'」'):'')+'</div>'
+        +(W&&W.hotEvents&&W.hotEvents.length?('<div class="wev">'+W.hotEvents.slice(0,2).map(x=>'· '+x).join('<br>')+'</div>'):'')
+        +'<button class="rall" id="worldReset" style="margin-top:12px">换一座城</button>'
+        +'<div class="whint">13 个应用共享同一座城，换城后所有内容会跟着变</div></div></div>'
+        +'<div class="grp card"><div class="gl">🎭 系统人格</div>'
+        +'<div class="prow">'+personaBtns+'</div>'
+        +'<div class="whint" id="pTone">'+(PERSONAS[curPersona]?('当前：'+PERSONAS[curPersona].name+' · '+PERSONAS[curPersona].tone):'')+'</div></div>'
         +'<div class="grp card"><div class="gl">关于本机</div>'+rows+'</div>'
         +'<div class="grp card"><div class="gl">🖥️ 桌面</div>'
         +'<div class="refresh-head"><span>已从桌面移除的应用</span><button class="rall" id="restoreApps">全部恢复</button></div>'
@@ -1139,6 +1169,13 @@ render();`;
         +'apiKey:document.getElementById("apiKey").value.trim(),model:document.getElementById("model").value.trim()||"openai-fast"};'
         +'if(!c.apiKey)delete c.apiKey;'
         +'parent.postMessage({type:"config",cfg:c},"*");this.textContent="✓ 已保存";var s=this;setTimeout(function(){s.textContent="保存设置"},1500)};'
+        +'var wr=document.getElementById("worldReset");'
+        +'if(wr)wr.onclick=function(){parent.postMessage({type:"world:reset"},"*");this.textContent="正在换城…";'
+        +'var b=this;setTimeout(function(){b.textContent="换一座城";location.reload()},900)};'
+        +'document.querySelectorAll(".pbtn").forEach(function(p){p.onclick=function(){'
+        +'document.querySelectorAll(".pbtn").forEach(function(x){x.classList.remove("on")});this.classList.add("on");'
+        +'parent.postMessage({type:"persona:set",key:this.getAttribute("data-p")},"*");'
+        +'var t=document.getElementById("pTone");if(t)t.textContent="当前："+this.textContent;}});'
         +'document.getElementById("restoreApps").onclick=function(){'
         +'parent.postMessage({type:"restoreApps"},"*");this.textContent="✓ 已恢复";var b=this;setTimeout(function(){b.textContent="全部恢复"},1500)};'
         +'document.getElementById("refreshAll").onclick=function(){'

@@ -122,8 +122,10 @@
   function centerAllIcons(){
     document.querySelectorAll('.app-icon svg,.dock-item svg,.mini svg,.folder-box svg').forEach(centerIconSvg);
   }
+  const ESC=D.escHTML;
   function iconInner(app){
-    const svg=app.svg||('<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:27px;background:linear-gradient(135deg,'+app.grad[0]+','+app.grad[1]+')">'+app.icon+'</div>');
+    // 应用名/图标可能来自 LLM 或 DNA 链接：一律转义后再进父页面 innerHTML
+    const svg=app.svg||('<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:27px;background:linear-gradient(135deg,'+app.grad[0]+','+app.grad[1]+')">'+ESC(app.icon)+'</div>');
     return svg;
   }
   // 桌面可见应用 = 内置 + 已安装，按保存的顺序排，过滤已隐藏
@@ -162,7 +164,7 @@
     el.className=cls;
     const isDock=cls==='dock-item';
     el.innerHTML='<div class="'+(isDock?'dock-item':'app-icon')+'" style="'+(app.svg?'':'background:linear-gradient(135deg,'+app.grad[0]+','+app.grad[1]+')')+'">'+iconInner(app)+'</div>'
-      +(isDock?'':'<div class="app-del">×</div><div class="app-name">'+app.name+'</div>');
+      +(isDock?'':'<div class="app-del">×</div><div class="app-name">'+ESC(app.name)+'</div>');
     // dock-item 本身就是可点击元素，避免内层重复类名导致事件误判
     if(isDock){ el.classList.remove('dock-item'); }
     el.title=app.name;
@@ -211,36 +213,47 @@
     document.body.classList.toggle('desk-edit',on);
     if(!on){ if(drag)endDrag(null); }
   }
+  const DRAG_START_PX=8;   // 超过这个位移才算"拖"，否则算"点"
   function bindDesktopIcon(el){
-    let lpStart=null;
+    let lpStart=null, pressDown=null;
     el.addEventListener('pointerdown',e=>{
       if(e.button!==undefined&&e.button!==0)return;
-      if(EDIT_MODE){ startDrag(e,el); return; }
+      pressDown={x:e.clientX,y:e.clientY};
+      if(EDIT_MODE){
+        // 编辑模式：先只记录起点，等真的移动了再开始拖（避免"点一下图标位置就变"）
+        return;
+      }
       clearTimeout(lpTimer);
       lpStart={x:e.clientX,y:e.clientY};
-      lpTimer=setTimeout(()=>{ setEditMode(true); startDrag(e,el); },520);
+      lpTimer=setTimeout(()=>{ setEditMode(true); },520);
     });
-    el.addEventListener('pointerup',()=>{ clearTimeout(lpTimer); lpStart=null });
-    el.addEventListener('pointercancel',()=>{ clearTimeout(lpTimer); lpStart=null });
+    el.addEventListener('pointerup',()=>{ clearTimeout(lpTimer); lpStart=null; pressDown=null });
+    el.addEventListener('pointercancel',()=>{ clearTimeout(lpTimer); lpStart=null; pressDown=null });
     el.addEventListener('pointermove',e=>{
       if(drag){ moveDrag(e); return }
-      // 只有明显位移（>8px）才判定为翻页手势；避免手指轻微抖动导致长按失败
-      if(lpStart&&Math.hypot(e.clientX-lpStart.x,e.clientY-lpStart.y)>8){
-        clearTimeout(lpTimer);
+      if(!pressDown)return;
+      const dist=Math.hypot(e.clientX-pressDown.x,e.clientY-pressDown.y);
+      if(EDIT_MODE){
+        if(dist>DRAG_START_PX){ startDrag(e,el,pressDown); pressDown=null }
+        return;
       }
+      // 非编辑模式：明显位移判定为翻页手势，取消长按
+      if(dist>DRAG_START_PX) clearTimeout(lpTimer);
     });
     el.addEventListener('contextmenu',e=>e.preventDefault());
   }
 
-  function startDrag(e,el){
+  function startDrag(e,el,origin){
     if(drag)return;
     const r=el.getBoundingClientRect();
+    const sx=(origin||{}).x!==undefined?origin.x:e.clientX;
+    const sy=(origin||{}).y!==undefined?origin.y:e.clientY;
     const ghost=el.cloneNode(true);
     ghost.classList.add('drag-ghost');
     ghost.style.cssText='position:fixed;z-index:999;pointer-events:none;left:'+r.left+'px;top:'+r.top+'px;width:'+r.width+'px;height:'+r.height+'px';
     document.body.appendChild(ghost);
     el.classList.add('drag-src');
-    drag={el,ghost,ox:e.clientX-r.left,oy:e.clientY-r.top};
+    drag={el,ghost,ox:sx-r.left,oy:sy-r.top,sx:sx,sy:sy};
     try{ el.setPointerCapture&&el.setPointerCapture(e.pointerId) }catch(err){}
     document.addEventListener('pointermove',onDocMove);
     document.addEventListener('pointerup',onDocUp);
@@ -267,8 +280,10 @@
   }
   function onDocMove(e){ moveDrag(e) }
   function onDocUp(e){
-    const target=hitTest(e.clientX,e.clientY);
-    endDrag(target);
+    if(!drag){ endDrag(null); return }
+    const moved=Math.hypot(e.clientX-drag.sx,e.clientY-drag.sy)>DRAG_START_PX;
+    // 没移动 = 只是点了一下，不做任何交换
+    endDrag(moved?hitTest(e.clientX,e.clientY):null);
   }
   function endDrag(target){
     document.removeEventListener('pointermove',onDocMove);
@@ -290,8 +305,9 @@
         saveLayout(LAYOUT);
       }
     }
+    const swapped=!!(target&&target!==el);
     drag=null;
-    if(target||EDIT_MODE)renderIcons();
+    if(swapped)renderIcons();
   }
 
   function removeApp(id,name){
@@ -430,6 +446,42 @@
   }
 
   // ---------- 锁屏交互 ----------
+  // ---------- 今日命运卡（playbook ①）：每天第一次解锁时出现 ----------
+  const FATE_KEY='hallucindriod_fate_seen';
+  function showFateCard(){
+    const Dd=window.OS_DATA;
+    if(!Dd||!Dd.ensurePersona)return;
+    let w=null;
+    try{ w=Dd.ensurePersona() }catch(e){ return }
+    if(!w||!w.persona)return;
+    const today=new Date().toISOString().slice(0,10);
+    let seen='';
+    try{ seen=localStorage.getItem(FATE_KEY)||'' }catch(e){}
+    if(seen===today)return;                       // 今天已经看过
+    const card=$('fateCard');
+    if(!card)return;
+    $('fateRole').textContent=w.persona.role||'未知身份';
+    $('fateTrait').textContent=w.persona.trait||'';
+    $('fateLine').textContent=w.persona.line||'';
+    $('fateCity').textContent='你在 '+w.city;
+    card.hidden=false;
+    const ok=$('fateOk');
+    const dismiss=()=>{
+      card.hidden=true;
+      try{ localStorage.setItem(FATE_KEY,today) }catch(e){}
+    };
+    if(ok)ok.onclick=dismiss;
+    card.onclick=e=>{ if(e.target===card)dismiss() };
+  }
+  // 按系统人格取提示语
+  function toneTip(){
+    const Dd=window.OS_DATA||{};
+    const key=(Dd.CONFIG&&Dd.CONFIG.persona)||'none';
+    const P=Dd.PERSONAS&&Dd.PERSONAS[key];
+    if(P&&P.tip&&P.tip.length)return pick(P.tip);
+    return pick(WORDS.toastTips);
+  }
+
   let dnaOpened=false;
   function unlock(){
     lockscreen.classList.add('hidden');
@@ -445,7 +497,7 @@
       },420);
       return;
     }
-    setTimeout(()=>toast(pick(WORDS.toastTips)),400);
+    setTimeout(()=>{ showFateCard(); toast(toneTip()) },400);
   }
   lockscreen.addEventListener('click',e=>{
     if(e.target.closest('.ls-flash')||e.target.closest('.ls-camera'))return;

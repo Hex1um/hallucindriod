@@ -136,4 +136,75 @@ function saveConfig(cfg){
 }
 const CONFIG = loadConfig();
 
-window.OS_DATA = { APPS, DOCK_IDS, FOLDERS, WORDS, rnd, pick, pickN, chance, randInt, neonPalette, lunarDate, CONFIG, loadConfig, saveConfig, DEFAULT_CONFIG, escHTML, safeText };
+// ============ 世界状态（playbook 1.1）：13 个应用共享同一座城 ============
+const WORLD_KEY='hallucindriod_world_v1';
+const PERSONAS={
+  none:   {name:'默认',   tone:'平静客观', tip:['已就绪','一切正常','完成']},
+  snark:  {name:'毒舌',   tone:'刻薄但好笑，喜欢吐槽', tip:['行吧','就这？','勉强能看','你又来了']},
+  gentle: {name:'温柔',   tone:'温和体贴，像在照顾你', tip:['慢慢来','别急呀','都好','记得休息']},
+  chuuni: {name:'中二',   tone:'中二热血，爱用夸张词汇', tip:['封印解除','灵力充盈','命运的齿轮转动了','吾已就绪']},
+  trans:  {name:'翻译腔', tone:'像译制片旁白，一板一眼', tip:['我的天哪','这可真是','哦，我亲爱的朋友','不得不说']}
+};
+
+function _pick(a){ return a[Math.floor(Math.random()*a.length)] }
+function _genWorld(){
+  const city=_pick(WORDS.cities);
+  const ev=[
+    _pick(WORDS.landmarks||['老码头'])+'的霓虹灯昨晚集体熄灭了十分钟',
+    _pick(WORDS.weatherEmoji)+' '+_pick(WORDS.weather)+'，气象台说这不正常',
+    '有人在'+_pick(WORDS.cities)+'上空看见了'+_pick(WORDS.adjectives)+'的云',
+    _pick(WORDS.contacts||['小林'])+'在广场竖了一块会说话的牌子'
+  ];
+  return {
+    city:city,
+    persona:null,
+    hotEvents:ev.slice(0,3),
+    lore:[],
+    day:new Date().toISOString().slice(0,10),
+    v:1
+  };
+}
+function loadWorld(){
+  try{
+    const o=JSON.parse(localStorage.getItem(WORLD_KEY)||'null');
+    if(o&&o.city)return o;
+  }catch(e){}
+  return null;
+}
+function saveWorld(w){
+  try{ localStorage.setItem(WORLD_KEY,JSON.stringify(w)); }catch(e){}
+}
+function ensureWorld(){
+  let w=loadWorld();
+  if(!w){ w=_genWorld(); saveWorld(w) }
+  return w;
+}
+function resetWorld(){
+  const w=_genWorld(); saveWorld(w); return w;
+}
+
+// 今日命运（playbook ①）：本地组合，不额外请求模型
+const ROLES=['火星驻站调酒师','数据废墟的拾荒者','夜班电车司机','二手梦批发商','云层之上的邮差','404 号档案员','天气修理员','记忆整理师'];
+const TRAITS=['有点嘴硬但心软','对细节异常执着','总在半夜想通事情','莫名自信','慢热但真诚','爱看别人吵架','睡觉时会说梦话'];
+function ensurePersona(){
+  const w=ensureWorld();
+  const today=new Date().toISOString().slice(0,10);
+  if(w.persona&&w.day===today)return w;
+  w.persona={
+    role:_pick(ROLES),
+    trait:_pick(TRAITS),
+    line:_pick([
+      '今天会遇到一件说不清的事',
+      '有人会认出你，但你想不起对方',
+      '你会在一家没去过的店里坐很久',
+      '有件小事会让你重新喜欢这座城市',
+      '你会在错误的时间收到一条正确的消息'
+    ])
+  };
+  w.day=today;
+  saveWorld(w);
+  return w;
+}
+
+window.OS_DATA = { APPS, DOCK_IDS, FOLDERS, WORDS, rnd, pick, pickN, chance, randInt, neonPalette, lunarDate, CONFIG, loadConfig, saveConfig, DEFAULT_CONFIG, escHTML, safeText,
+  WORLD_KEY, PERSONAS, loadWorld, saveWorld, ensureWorld, resetWorld, ensurePersona };

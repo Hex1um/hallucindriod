@@ -356,6 +356,7 @@ render();`;
     const songs=llms?llms.map(x=>'《'+x.title+'》'):pickN(WORDS.songs,n);
     const arts=llms?llms.map(x=>x.artist||'幻觉歌手'):pickN(WORDS.artists,n);
     const pal=neonPalette();
+    const emos0=pick(['🎧','🎹','🎸','🎤','🥁','🎷']);
     let list='';
     songs.forEach((s,i)=>{list+='<div class="song'+(i===0?' act':'')+'" data-i="'+i+'"><span class="sn">'+(i+1)+'</span>'
       +'<span class="st">'+s+'<small> '+arts[i]+'</small></span><span class="sd">3:'+String(randInt(10,59)).padStart(2,'0')+'</span></div>'});
@@ -382,6 +383,7 @@ render();`;
         +'.eq{display:inline-block}.eq i{display:inline-block;width:3px;background:var(--ac);margin-left:2px;animation:eq .6s infinite alternate}'
         +'@keyframes eq{to{height:14px}}',
       html:'<div class="mu"><div class="msrch"><span class="ic">⌕</span><input id="sq" placeholder="搜索歌曲、歌手" autocomplete="off"><button id="sgo">搜索</button></div>'
+        +'<div class="cover" id="cover">'+emos0+'</div>'
         +'<div class="now" id="now">'+songs[0]+'</div><div class="artist" id="artist">'+arts[0]+' · 正在播放</div>'
         +'<div class="prog"><i id="prog"></i></div><div class="times"><span id="t1">0:00</span><span id="t2">3:42</span></div>'
         +'<div class="ctrls"><button id="prev">⏮</button><button class="play" id="play">▶</button><button id="next">⏭</button></div>'

@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#0a0a0f">
 <title>Hallucindriod · 幻卓</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='15' fill='%237c3aed'/><text x='32' y='46' font-size='40' text-anchor='middle' fill='white'>✦</text></svg>">
-<link rel="stylesheet" href="css/style.css?v=29">
+<link rel="stylesheet" href="css/style.css?v=30">
 </head>
 <body>
 
@@ -117,6 +117,18 @@
     <iframe id="appFrame" title="应用" sandbox="allow-scripts allow-forms allow-modals allow-popups"></iframe>
   </div>
 
+  <!-- 今日命运卡 -->
+  <div class="fate" id="fateCard" hidden>
+    <div class="fate-in">
+      <div class="fate-tag">今日身份</div>
+      <div class="fate-role" id="fateRole">—</div>
+      <div class="fate-trait" id="fateTrait"></div>
+      <div class="fate-line" id="fateLine"></div>
+      <div class="fate-city" id="fateCity"></div>
+      <button class="fate-ok" id="fateOk">开始今天</button>
+    </div>
+  </div>
+
   <!-- 锁屏（完全不透明，遮挡桌面） -->
   <div class="lockscreen" id="lockscreen">
     <div class="ls-top">
@@ -137,12 +149,12 @@
 
 </div>
 
-<script src="js/data.js?v=29"></script>
-<script src="js/apps.js?v=29"></script>
-<script src="js/apps2.js?v=29"></script>
-<script src="js/llm.js?v=29"></script>
-<script src="js/p2p.js?v=29"></script>
-<script src="js/engine.js?v=29"></script>
-<script src="js/main.js?v=29"></script>
+<script src="js/data.js?v=30"></script>
+<script src="js/apps.js?v=30"></script>
+<script src="js/apps2.js?v=30"></script>
+<script src="js/llm.js?v=30"></script>
+<script src="js/p2p.js?v=30"></script>
+<script src="js/engine.js?v=30"></script>
+<script src="js/main.js?v=30"></script>
 </body>
 </html>

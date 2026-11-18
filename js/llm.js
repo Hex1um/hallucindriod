@@ -56,9 +56,34 @@
     return '你是「Hallucindriod」的奇想内容引擎，当前置信度 '+pct+'%。请生成【充满想象力、超现实、像童话或梦境一样】的中文内容：奇妙的地点、不可思议的天气、有趣的虚构数据。只输出一个纯JSON对象，不要markdown代码块，不要任何解释文字或前后缀。';
   }
   function temperature(conf,id){ return id==='terminal'?0.15:+(0.2+(1-conf)*0.95).toFixed(2); }
+  // 世界状态前缀：13 个应用共享同一座城、同一批事件（playbook 1.1）
+  function worldPrefix(){
+    const D=window.OS_DATA;
+    if(!D||!D.ensureWorld)return '';
+    let w=null;
+    try{ w=D.ensurePersona?D.ensurePersona():D.ensureWorld() }catch(e){ return '' }
+    if(!w||!w.city)return '';
+    let t='【世界观】你所在的城市叫「'+w.city+'」。';
+    if(w.persona&&w.persona.role)t+='用户今天的身份是「'+w.persona.role+'」。';
+    if(w.hotEvents&&w.hotEvents.length)t+='最近这座城里发生：'+w.hotEvents.slice(0,2).join('；')+'。';
+    t+='生成内容必须与这个世界保持一致：提到的地点只能是「'+w.city+'」及周边，可自然呼应上面的事件（不要照抄原句）。\n';
+    return t;
+  }
+  // 系统人格：让整机文案有统一语气（playbook ②）
+  function personaPrefix(){
+    const D=window.OS_DATA;
+    const cfg=(D&&D.CONFIG)||{};
+    const key=cfg.persona||'none';
+    const P=D&&D.PERSONAS&&D.PERSONAS[key];
+    if(!P||key==='none')return '';
+    return '【语气】你要用「'+P.name+'」的口吻：'+P.tone+'。文案要带这个语气，但不要因此写错数据。\n';
+  }
+
   function buildUserPrompt(id,name){
-    if(id==='__generic__'||!SCHEMA[id]) return '用户想要一个叫「'+name+'」的手机App。只输出纯JSON：{"tagline":"贴合这个应用的宣传语，20字内","features":["贴合该应用的具体能力","另一项具体能力","第三项具体能力"]}。要求：features 必须是和「'+name+'」相关的具体能力短语，禁止出现"功能1""功能2"这类占位文字。';
-    return SCHEMA[id](name);
+    const skipWorld=(id==='terminal'||id==='friend'||id==='chatreply');
+    const pre=skipWorld?personaPrefix():(worldPrefix()+personaPrefix());
+    if(id==='__generic__'||!SCHEMA[id]) return pre+'用户想要一个叫「'+name+'」的手机App。只输出纯JSON：{"tagline":"贴合这个应用的宣传语，20字内","features":["贴合该应用的具体能力","另一项具体能力","第三项具体能力"]}。要求：features 必须是和「'+name+'」相关的具体能力短语，禁止出现"功能1""功能2"这类占位文字。';
+    return pre+SCHEMA[id](name);
   }
   // 容错修复：去掉尾随逗号、补齐被截断的引号与括号（免费源经常在末尾断掉）
   function repairJSON(src){
@@ -262,5 +287,7 @@
     return null;
   }
 
-  window.LLM={fetchHallucination,systemPrompt,temperature};
+  window.LLM={fetchHallucination,systemPrompt,temperature,
+    // 供测试/调试查看实际提示词（不参与运行时逻辑）
+    buildUserPrompt, worldPrefix, personaPrefix};
 })();

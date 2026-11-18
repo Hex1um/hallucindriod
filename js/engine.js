@@ -147,8 +147,9 @@
     });
   }
 
+  let openQueued=null;
   async function openApp(id,name,opts){
-    if(busy)return;
+    if(busy){ openQueued=[id,name,opts]; return; }   // 排队，别静默丢掉
     noteUserActivity();
     const app=(APPS.find(a=>a.id===id));
     name=name||(app&&app.name)||'应用';
@@ -268,6 +269,11 @@
     // 应用已经显示出来 → 并行预取「接下来可能打开」的应用，用户切过去就能秒开
     if(id!=='terminal'&&id!=='browser'){
       setTimeout(()=>{ try{ prefetchRelated(id); }catch(e){} },520);
+    }
+    // 有排队的打开请求（例如终端一次执行多个动作）→ 接着打开
+    if(openQueued){
+      const q=openQueued; openQueued=null;
+      setTimeout(()=>{ try{ openApp(q[0],q[1],q[2]); }catch(e){} },80);
     }
   }
 
@@ -607,7 +613,11 @@
     const json=new TextDecoder().decode(bytes);
     const o=JSON.parse(json);
     if(!o||typeof o!=='object'||!o.i)return null;
-    return o;
+    // 只接受已知应用 id（或通用兜底），防止 __proto__ / constructor 这类键
+    const id=String(o.i);
+    const known=Object.prototype.hasOwnProperty.call(window.APP_BUILDERS||{},id);
+    if(!known && id!=='__generic__')return null;
+    return {v:Number(o.v)||1, i:id, n:String(o.n||'').slice(0,16), d:o.d||null, t:Number(o.t)||Date.now()};
   }
 
   // 生成分享链接（当前应用有 DNA 才可用）
@@ -698,13 +708,57 @@
     return true;
   }
 
+  // ---------- 关联预取：打开 A 后并行预取"下一步最可能打开"的应用 ----------
+  const RELATED={
+    delivery:['video','messages','music'],
+    video:['delivery','music','messages'],
+    messages:['phone','video','delivery'],
+    music:['video','messages'],
+    album:['camera','delivery'],
+    camera:['album'],
+    browser:['store','video'],
+    store:['browser','video'],
+    weather:['map','delivery'],
+    map:['weather','delivery'],
+    phone:['messages'],
+    calculator:['terminal'],
+    settings:[],
+    terminal:['delivery','video','messages']
+  };
+  const prefetchQueue=[];
+  let prefetching=false;
+
+  function prefetchRelated(id){
+    (RELATED[id]||[]).forEach(rid=>{
+      if(rid===id)return;
+      if(rid in dataCache||pending[rid])return;
+      if(prefetchQueue.indexOf(rid)>=0)return;
+      prefetchQueue.push(rid);
+    });
+    drainPrefetch();
+  }
+  async function drainPrefetch(){
+    if(prefetching||!prefetchQueue.length)return;
+    prefetching=true;
+    while(prefetchQueue.length){
+      const batch=prefetchQueue.splice(0,2);   // 两两并发，避免打爆免费源
+      await Promise.all(batch.map(rid=>{
+        const app=APPS.find(a=>a.id===rid);
+        return app?preload(rid,app.name).catch(()=>null):Promise.resolve(null);
+      }));
+    }
+    prefetching=false;
+  }
+
   // 接收 iframe 内部消息
   // 外部站点只允许请求关闭
   const EXTERNAL_ALLOW=['close'];
   // 特权指令 → 唯一允许发送它的应用（最小权限：别的应用即使被注入脚本也改不了系统状态）
   const PRIV_OWNER={
     config:'settings', refresh:'settings', restoreApps:'settings',
-    install:'store', storegen:'store',
+    'world:reset':'settings', 'persona:set':'settings',
+    install:'store', storegen:'store', openapp:'store',
+    regen:'__self__',
     webgen:'browser', websearch:'browser', webstate:'browser',
     termgen:'terminal',
     musicsearch:'music', tone:'music',
@@ -719,7 +773,8 @@
     if(currentId==='__external__'&&EXTERNAL_ALLOW.indexOf(e.data.type)<0)return;
     // ③ 特权指令必须由对应的应用发出
     const owner=PRIV_OWNER[e.data.type];
-    if(owner&&currentId!==owner)return;
+    if(owner==='__self__'){ if(!currentId)return; }        // 只能对当前应用自身操作
+    else if(owner&&currentId!==owner)return;
     if(e.data.type==='close')closeApp();
     else if(e.data.type==='regen')regen();
     else if(e.data.type==='webgen')llmGen('browser',e.data.topic||'幻卓空间',e.data.nonce);
@@ -749,7 +804,8 @@
     }
     else if(e.data.type==='install'){
       const a=e.data.app||{};
-      const nm=String(a.name||'').trim().slice(0,16);
+      const clean=v=>String(v==null?'':v).replace(/[\u0000-\u001f\u007f]/g,'').trim();
+      const nm=clean(a.name).slice(0,16);
       if(!nm)return;
       const list=window.__INSTALLED||(window.__INSTALLED=[]);
       if(list.some(x=>x.name===nm)){
@@ -757,7 +813,8 @@
         return;
       }
       let hh=0;for(let i=0;i<nm.length;i++)hh=(hh*31+nm.charCodeAt(i))>>>0;
-      list.push({id:'custom_'+hh.toString(36),name:nm,emoji:String(a.emoji||'✦'),desc:String(a.desc||''),installedAt:Date.now()});
+      // emoji 只保留 4 个字符、desc 限 40 字，避免超长/恶意内容进入桌面渲染
+      list.push({id:'custom_'+hh.toString(36),name:nm,emoji:clean(a.emoji).slice(0,4)||'✦',desc:clean(a.desc).slice(0,40),installedAt:Date.now()});
       if(window.HOS&&window.HOS.saveInstalled)window.HOS.saveInstalled(list);
       if(window.HOS&&window.HOS.refreshIcons)window.HOS.refreshIcons();
       if(window.HOS&&window.HOS.toast)window.HOS.toast('「'+nm+'」已添加到桌面');
@@ -788,6 +845,23 @@
       Object.assign(D.CONFIG,e.data.cfg);
       if(D.saveConfig)D.saveConfig(D.CONFIG);
       if(window.HOS&&window.HOS.toast&&e.data.cfg.apiBase!==undefined)window.HOS.toast('✓ 系统配置已保存');
+    }
+    else if(e.data.type==='world:reset'){
+      // 换一座城：世界变了，所有基于旧世界的生成结果都要失效
+      let w=null;
+      try{ w=D.resetWorld() }catch(e){}
+      Object.keys(dataCache).forEach(k=>delete dataCache[k]);
+      Object.keys(viewCache).forEach(k=>delete viewCache[k]);
+      setWebState(null);
+      if(window.HOS&&window.HOS.toast)window.HOS.toast('世界已重置 · '+(w?w.city:'新城'));
+    }
+    else if(e.data.type==='persona:set'){
+      D.CONFIG.persona=String(e.data.key||'none');
+      if(D.saveConfig)D.saveConfig(D.CONFIG);
+      // 语气变了，缓存内容也该更新
+      Object.keys(dataCache).forEach(k=>delete dataCache[k]);
+      const P=D.PERSONAS&&D.PERSONAS[D.CONFIG.persona];
+      if(window.HOS&&window.HOS.toast)window.HOS.toast('语气已切换 · '+(P?P.name:'默认'));
     }
   });
 
