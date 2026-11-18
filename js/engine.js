@@ -204,6 +204,10 @@
     frame.srcdoc=html;
     busy=false;
     if(opts&&opts.toast)window.HOS.toast(opts.toast);
+    // 应用已经显示出来 → 并行预取「接下来可能打开」的应用，用户切过去就能秒开
+    if(id!=='terminal'&&id!=='browser'){
+      setTimeout(()=>{ try{ prefetchRelated(id); }catch(e){} },520);
+    }
   }
 
   function closeApp(){
@@ -314,6 +318,11 @@
     const fb=localIntent(text);
     if(fb.actions&&fb.actions.length){
       const actions=norm(fb.actions);
+      // 提前预取终端要打开的应用，动作执行时通常已就绪
+      actions.filter(a=>a.type==='openApp').forEach(a=>{
+        const app=APPS.find(x=>x.name===a.target||x.id===a.target||x.kw.indexOf(a.target)>=0);
+        if(app)preload(app.id,app.name).catch(()=>{});
+      });
       post({reply:fb.reply,actions:actions});
       setTimeout(()=>executeActions(actions),420);
       return;
@@ -431,6 +440,48 @@ background:rgba(12,14,20,.86);backdrop-filter:blur(10px);z-index:9;padding:0 8px
     appLayer.hidden=false;
   }
 
+  // 应用关联图：打开 A 时，预判接下来最可能打开哪些
+  const AFFINITY={
+    delivery:['video','messages','music'],
+    video:['delivery','music','messages'],
+    messages:['phone','video','delivery'],
+    music:['video','messages'],
+    album:['camera','delivery'],
+    camera:['album'],
+    browser:['store','video'],
+    store:['browser','video'],
+    weather:['map','delivery'],
+    map:['weather','delivery'],
+    phone:['messages'],
+    calculator:['terminal'],
+    settings:[],
+    terminal:['delivery','video','messages']
+  };
+  // 关联预取队列：两两并发推进，去重且不重复请求
+  const prefetchQueue=[];
+  let draining=false;
+  function prefetchRelated(id){
+    (AFFINITY[id]||[]).forEach(a=>{
+      if(a==='terminal'||a==='browser')return;
+      if(a in dataCache||pending[a])return;
+      if(prefetchQueue.indexOf(a)>=0)return;
+      prefetchQueue.push(a);
+    });
+    drainPrefetch();
+  }
+  async function drainPrefetch(){
+    if(draining||!prefetchQueue.length)return;
+    draining=true;
+    while(prefetchQueue.length){
+      const batch=prefetchQueue.splice(0,2);
+      await Promise.all(batch.map(a=>{
+        const app=APPS.find(x=>x.id===a);
+        return app?preload(a,app.name).catch(()=>null):Promise.resolve(null);
+      }));
+    }
+    draining=false;
+  }
+
   // 接收 iframe 内部消息
   window.addEventListener('message',function(e){
     if(!e.data||typeof e.data!=='object')return;
@@ -482,7 +533,8 @@ background:rgba(12,14,20,.86);backdrop-filter:blur(10px);z-index:9;padding:0 8px
     }
   });
 
-  window.ENGINE={openApp,closeApp,regen,warmup,refreshData,preload,hasCache,openExternal};
+  window.ENGINE={openApp,closeApp,regen,warmup,refreshData,preload,hasCache,openExternal,
+    cacheStatus(){ return {cached:Object.keys(dataCache),pending:Object.keys(pending),queue:prefetchQueue.slice()}; }};
   bindP2PInbox();
   // 已注册用户：启动时自动上线
   if(window.P2P && window.__SOCIAL && window.__SOCIAL.profile && window.__SOCIAL.profile.name){
