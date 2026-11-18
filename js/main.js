@@ -90,8 +90,17 @@
     }catch(e){}
     return {profile:null,friends:[]};
   }
+  const MSG_LIMIT=50;
   function saveSocial(d){
-    try{ localStorage.setItem(SOCIAL_KEY,JSON.stringify(d)); }catch(e){}
+    // 每个会话只保留最近 50 条，避免长年累积顶爆 localStorage 配额
+    try{
+      (d&&Array.isArray(d.friends)?d.friends:[]).forEach(f=>{
+        if(Array.isArray(f.msgs)&&f.msgs.length>MSG_LIMIT)f.msgs=f.msgs.slice(-MSG_LIMIT);
+      });
+      localStorage.setItem(SOCIAL_KEY,JSON.stringify(d));
+    }catch(e){
+      if(window.HOS&&window.HOS.toast)window.HOS.toast('本地存储空间不足，部分消息未保存');
+    }
   }
   window.__SOCIAL = loadSocial();
 
@@ -203,18 +212,22 @@
     if(!on){ if(drag)endDrag(null); }
   }
   function bindDesktopIcon(el){
+    let lpStart=null;
     el.addEventListener('pointerdown',e=>{
       if(e.button!==undefined&&e.button!==0)return;
       if(EDIT_MODE){ startDrag(e,el); return; }
       clearTimeout(lpTimer);
+      lpStart={x:e.clientX,y:e.clientY};
       lpTimer=setTimeout(()=>{ setEditMode(true); startDrag(e,el); },520);
     });
-    el.addEventListener('pointerup',()=>{ clearTimeout(lpTimer) });
-    el.addEventListener('pointercancel',()=>{ clearTimeout(lpTimer) });
+    el.addEventListener('pointerup',()=>{ clearTimeout(lpTimer); lpStart=null });
+    el.addEventListener('pointercancel',()=>{ clearTimeout(lpTimer); lpStart=null });
     el.addEventListener('pointermove',e=>{
       if(drag){ moveDrag(e); return }
-      // 明显的滑动说明是翻页手势，取消长按
-      clearTimeout(lpTimer);
+      // 只有明显位移（>8px）才判定为翻页手势；避免手指轻微抖动导致长按失败
+      if(lpStart&&Math.hypot(e.clientX-lpStart.x,e.clientY-lpStart.y)>8){
+        clearTimeout(lpTimer);
+      }
     });
     el.addEventListener('contextmenu',e=>e.preventDefault());
   }

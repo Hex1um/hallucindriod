@@ -14,6 +14,16 @@ function svgIcon(bg, path, extra){
     +'<g class="ic">'+(extra||'')+path+'</g></svg>';
 }
 const W='fill="#fff"';
+
+// 统一 HTML 转义：凡是把不可信文本（LLM 输出、用户输入）拼进 innerHTML 的地方都必须过它
+function escHTML(v){
+  return String(v==null?'':v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+// 应用名等短标识：转义 + 限长 + 去控制字符
+function safeText(v,max){
+  const t=String(v==null?'':v).replace(/[\u0000-\u001f\u007f]/g,'').trim();
+  return escHTML(t.slice(0,max||16));
+}
 const ICONS={
   calculator: svgIcon(['#ffb340','#ff7a18'],'<g '+W+'><rect x="16" y="10" width="32" height="44" rx="6"/><rect x="20" y="14" width="24" height="10" rx="2" fill="#ffe0b3"/><circle cx="23" cy="31" r="3.2" fill="#ff7a18"/><circle cx="32" cy="31" r="3.2" fill="#ff7a18"/><circle cx="41" cy="31" r="3.2" fill="#ff7a18"/><circle cx="23" cy="40" r="3.2" fill="#ff7a18"/><circle cx="32" cy="40" r="3.2" fill="#ff7a18"/><circle cx="41" cy="40" r="3.2" fill="#ff7a18"/></g>'),
   weather: svgIcon(['#5ec8ff','#1a73e8'],'<g '+W+'><circle cx="41" cy="23" r="9" fill="#ffe08a"/><path d="M20 42a9 9 0 0 1 9-9 11 11 0 0 1 20 4 7 7 0 0 1-2 13H22a7 7 0 0 1-2-8z"/></g>'),
@@ -126,4 +136,4 @@ function saveConfig(cfg){
 }
 const CONFIG = loadConfig();
 
-window.OS_DATA = { APPS, DOCK_IDS, FOLDERS, WORDS, rnd, pick, pickN, chance, randInt, neonPalette, lunarDate, CONFIG, loadConfig, saveConfig, DEFAULT_CONFIG };
+window.OS_DATA = { APPS, DOCK_IDS, FOLDERS, WORDS, rnd, pick, pickN, chance, randInt, neonPalette, lunarDate, CONFIG, loadConfig, saveConfig, DEFAULT_CONFIG, escHTML, safeText };

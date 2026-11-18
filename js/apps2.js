@@ -35,11 +35,11 @@
         ? '<button class="fab-back" onclick="parent.postMessage({type:\'close\'},\'*\')" aria-label="返回">‹</button>'
         : '<div class="abar">'
           + '<button class="ab-btn" onclick="parent.postMessage({type:\'close\'},\'*\')">‹ 返回</button>'
-          + '<div class="ab-title">'+(cfg.icon||'✦')+' '+(cfg.title||'应用')+'</div>'
+          + '<div class="ab-title">'+(cfg.icon||'✦')+' '+String(cfg.title||'应用').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))+'</div>'
           + '<span class="ab-btn" style="text-align:right" aria-hidden="true"></span>'
           + '</div>')
     + '<div class="ab-body">'+(cfg.html||'')+'</div>'
-    + '<script>'+(cfg.js||'')+'</script>'
+    + '<script>'+(cfg.js||'').replace(/<\/script/gi,'<\\/script')+'</script>'
     + '</body></html>';
   }
 
@@ -75,6 +75,13 @@
 
   function renderSiteHTML(d){
     d=d||{};
+    function esc(v){return String(v==null?'':v).replace(/[&<>"']/g,function(c){return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]})}
+    d={siteName:esc(d.siteName||d.topic||''),tagline:esc(d.tagline||''),type:d.type,
+       heroTitle:esc(d.heroTitle||''),heroSub:esc(d.heroSub||''),cta:esc(d.cta||''),
+       aboutTitle:esc(d.aboutTitle||''),about:Array.isArray(d.about)?d.about.map(esc):(d.about?[esc(d.about)]:[]),
+       features:(d.features||[]).map(function(f){return {icon:esc(f.icon||''),title:esc(f.title||''),desc:esc(f.desc||'')}}),
+       stats:(d.stats||[]).map(function(s){return {num:esc(s.num||''),label:esc(s.label||'')}}),
+       news:(d.news||[]).map(function(n){return esc(typeof n==='string'?n:'')})};
     var name=d.siteName||d.topic||'新页面';
     var tag=d.tagline||'值得信赖的选择';
     var hero=d.heroTitle||('欢迎来到 '+name);
@@ -198,14 +205,15 @@
 
   function renderSearchResults(d){
     d=d||{};
-    var q=String(d.query||'');
+    function esc(v){return String(v==null?'':v).replace(/[&<>"']/g,function(c){return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]})}
+    var q=esc(String(d.query||''));
     var total=String(d.total||'约 1,240,000 条结果');
     var results=(d.results&&d.results.length)?d.results:fallbackResults(q);
     var rows=results.map(function(r){
       return '<div class="sr" data-url="'+String(r.url||'').replace(/"/g,'')+'">'
-        +'<div class="srt">'+String(r.title||'')+'</div>'
-        +'<div class="sru">'+String(r.site||r.url||'')+'</div>'
-        +'<div class="srx">'+String(r.snippet||'')+'</div></div>';
+        +'<div class="srt">'+esc(String(r.title||''))+'</div>'
+        +'<div class="sru">'+esc(String(r.site||r.url||''))+'</div>'
+        +'<div class="srx">'+esc(String(r.snippet||''))+'</div></div>';
     }).join('');
     if(!rows)rows='<div class="srempty">没有找到相关结果</div>';
     return '<div class="site type-search">'
@@ -465,7 +473,7 @@
         +'.shutter:active{transform:scale(.92)}'
         +'.thumb{width:46px;height:46px;border-radius:10px;background:#222;display:flex;align-items:center;justify-content:center;font-size:22px}',
       html:'<div class="cm"><div class="view" id="view"><div class="grid"></div>'
-        +'<div class="stamp">相机 · '+tip+'</div><div class="scene" id="scene">'+sceneEmo+'</div>'
+        +'<div class="stamp">相机 · '+String(tip).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))+'</div><div class="scene" id="scene">'+sceneEmo+'</div>'
         +'<div class="cap" id="cap"></div>'
         +'<div class="flash" id="flash"></div></div>'
         +'<div class="ctrls"><button id="flip">🔄</button><div class="shutter" id="shutter">📸</div><div class="thumb" id="thumb">'+sceneEmo+'</div></div></div>',
@@ -1103,7 +1111,8 @@ render();`;
         +'<label class="lbl">API 地址（OpenAI 兼容，需支持跨域）</label>'
         +'<input id="apiBase" placeholder="https://your-api.com/v1" value="'+(cfg.apiBase||'')+'">'
         +'<label class="lbl">API Key（可选）</label>'
-        +'<input id="apiKey" type="password" placeholder="sk-..." value="'+(cfg.apiKey||'')+'">'
+        +'<input id="apiKey" type="password" placeholder="'+(cfg.hasKey?'已配置（留空则不修改）':'未配置，填入 sk-...')+'" value="">'
+        +'<div style="font-size:10.5px;color:#6f7488;margin-top:6px">Key 只保存在本机浏览器，不会下发给任何应用页面</div>'
         +'<label class="lbl">模型名</label>'
         +'<input id="model" placeholder="openai-fast" value="'+(cfg.model||'')+'">'
         +'<button class="save" id="saveCfg">保存设置</button></div>'
@@ -1128,6 +1137,7 @@ render();`;
         +'document.getElementById("saveCfg").onclick=function(){'
         +'var c={confidence:+cr.value,apiBase:document.getElementById("apiBase").value.trim(),'
         +'apiKey:document.getElementById("apiKey").value.trim(),model:document.getElementById("model").value.trim()||"openai-fast"};'
+        +'if(!c.apiKey)delete c.apiKey;'
         +'parent.postMessage({type:"config",cfg:c},"*");this.textContent="✓ 已保存";var s=this;setTimeout(function(){s.textContent="保存设置"},1500)};'
         +'document.getElementById("restoreApps").onclick=function(){'
         +'parent.postMessage({type:"restoreApps"},"*");this.textContent="✓ 已恢复";var b=this;setTimeout(function(){b.textContent="全部恢复"},1500)};'
@@ -1150,7 +1160,8 @@ render();`;
     const features=cleanF.length>=2?cleanF.slice(0,3):pickN(['语音吐槽','AI 算命','自动摸鱼','量子记账','情绪识别','赛博祈福','智能找借口','梦境回放','反向打卡','电子木鱼'],3);
     const badTag=/一句.*广告语|20字内/i;
     const tagline=(L&&L.tagline&&!badTag.test(L.tagline))?L.tagline:(adj+noun+' · 由 AI 生成，独一无二');
-    const fl=features.map(f=>'<div class="gf"><span>✦</span><div><b>'+f+'</b><small>由'+(L?'在线服务':'本地引擎')+'实时驱动</small></div></div>').join('');
+    const esc=window.OS_DATA.escHTML;
+    const fl=features.map(f=>'<div class="gf"><span>✦</span><div><b>'+esc(f)+'</b><small>由'+(L?'在线服务':'本地引擎')+'实时驱动</small></div></div>').join('');
     return shell({
       title:topic, icon:'✦', accent:pal.a,
       css:'.gn{padding:22px;text-align:center}'
@@ -1161,7 +1172,7 @@ render();`;
         +'.gf span{font-size:20px;color:var(--ac)}.gf b{font-size:13px;display:block}.gf small{font-size:10px;color:#8b90a5}'
         +'.open{margin-top:12px;border:none;border-radius:999px;padding:12px 30px;background:var(--ac);color:#0b0b12;font-weight:700;cursor:pointer;font-size:14px}',
       html:'<div class="gn"><div class="gb">'+pick(['🪄','🔮','🤖','🫧','🧊','🌈'])+'</div>'
-        +'<h2>'+topic+'</h2><div class="sub">'+tagline+'</div>'
+        +'<h2>'+esc(topic)+'</h2><div class="sub">'+esc(tagline)+'</div>'
         +fl+'<button class="open" id="op">立即体验</button></div>',
       js:'document.getElementById("op").onclick=function(){this.textContent="✦ 正在运行…";'
         +'var s=this;setTimeout(function(){s.textContent="功能正在生成，请稍候…"},1600)}'
@@ -1286,7 +1297,7 @@ render();`;
       const emo=f.emoji||pick(['🍩','🍔','🍜','🥩','🍰','🍤']);
       const bg=['linear-gradient(150deg,#3f2a12,#7c4a12)','linear-gradient(150deg,#3a1e2a,#7a2d4a)','linear-gradient(150deg,#122f3a,#1e5a6e)','linear-gradient(150deg,#2a1c3f,#4c2d7a)'][i%4];
       return '<div class="dfcard" data-feed="'+i+'"><div class="dfimg" style="background:'+bg+'">'+emo+'</div>'
-        +'<div class="dfbody"><div class="dftitle">'+String(f.title||'')+'</div>'
+        +'<div class="dfbody"><div class="dftitle">'+String(f.title||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))+'</div>'
         +'<div class="dfmeta"><span class="av">'+(String(f.author||'用户').slice(0,1))+'</span>'
         +'<span>'+String(f.author||'用户')+'</span><span class="lv">'+String(f.level||'Lv1')+'</span>'
         +'<span class="lk">♡ '+String(f.likes==null?0:f.likes)+'</span></div></div></div>';

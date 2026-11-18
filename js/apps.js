@@ -38,11 +38,11 @@
         ? '<button class="fab-back" onclick="parent.postMessage({type:\'close\'},\'*\')" aria-label="返回">‹</button>'
         : '<div class="abar">'
           + '<button class="ab-btn" onclick="parent.postMessage({type:\'close\'},\'*\')">‹ 返回</button>'
-          + '<div class="ab-title">'+(cfg.icon||'✦')+' '+(cfg.title||'应用')+'</div>'
+          + '<div class="ab-title">'+(cfg.icon||'✦')+' '+String(cfg.title||'应用').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))+'</div>'
           + '<span class="ab-btn" style="text-align:right" aria-hidden="true"></span>'
           + '</div>')
     + '<div class="ab-body">'+(cfg.html||'')+'</div>'
-    + '<script>'+(cfg.js||'')+'</script>'
+    + '<script>'+(cfg.js||'').replace(/<\/script/gi,'<\\/script')+'</script>'
     + '</body></html>';
   }
 
@@ -118,20 +118,21 @@
     const dataJSON=JSON.stringify({cities:cities}).replace(/</g,'\\u003c');
     const js = `var D=${dataJSON},cur=0;
 var box=document.getElementById('wxBox'),dtl=document.getElementById('wxDtl');
+function escW(v){return String(v==null?'':v).replace(/[&<>"']/g,function(c){return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]})}
 function aqiTxt(a){return a<50?'优':a<100?'良':a<150?'轻度污染':'重污染'}
 function render(){
   var c=D.cities[cur];
   box.innerHTML='<div class="wx"><div class="cityrow"><button class="nav" id="wxPrev">‹</button>'
-    +'<div class="citywrap"><div class="city">'+c.city+'</div><div class="now">'+c.w+' · 卫星实时观测</div></div>'
+    +'<div class="citywrap"><div class="city">'+escW(c.city)+'</div><div class="now">'+escW(c.w)+' · 卫星实时观测</div></div>'
     +'<button class="nav" id="wxNext">›</button></div>'
-    +'<div class="big"><div class="e">'+c.emo+'</div><div class="t">'+c.t+'°</div>'
-    +'<div class="d">体感 '+c.feel+'°<br>'+c.w+'</div></div>'
+    +'<div class="big"><div class="e">'+escW(c.emo)+'</div><div class="t">'+c.t+'°</div>'
+    +'<div class="d">体感 '+c.feel+'°<br>'+escW(c.w)+'</div></div>'
     +'<div class="aqi card"><span>空气质量 AQI <b>'+c.aqi+'</b></span><span>'+aqiTxt(c.aqi)+'</span></div>'
     +'<div class="fcs card">'+c.days.map(function(d,i){
-        return '<div class="fc" data-d="'+i+'"><span>'+d.d+'</span><span>'+d.e+'</span>'
-          +'<span class="muted">'+d.we+'</span><span>'+d.lo+'° ~ '+d.hi+'°</span></div>';
+        return '<div class="fc" data-d="'+i+'"><span>'+escW(d.d)+'</span><span>'+escW(d.e)+'</span>'
+          +'<span class="muted">'+escW(d.we)+'</span><span>'+d.lo+'° ~ '+d.hi+'°</span></div>';
       }).join('')+'</div>'
-    +(c.tip?'<div class="tip" style="color:#c4b5fd">💡 '+c.tip+'</div>':'')
+    +(c.tip?'<div class="tip" style="color:#c4b5fd">💡 '+escW(c.tip)+'</div>':'')
     +'<div class="dotrow">'+D.cities.map(function(x,i){return '<i class="'+(i===cur?'on':'')+'"></i>'}).join('')+'</div>'
     +'<div class="tip">左右切换城市 · 点某一天看详情</div></div>';
   document.getElementById('wxPrev').onclick=function(){cur=(cur-1+D.cities.length)%D.cities.length;render()};

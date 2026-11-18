@@ -49,7 +49,7 @@ http.createServer(async (req, res) => {
     res.writeHead(502, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({ error: String(e && e.message || e) }));
   }
-}).listen(PORT, () => {
+}).listen(PORT, '127.0.0.1', () => {
   console.log('LLM 代理已启动 → http://localhost:' + PORT + '/api/openai');
   console.log('现在用 http://localhost 打开页面，LLM 会走这个代理。');
 });

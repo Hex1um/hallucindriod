@@ -10,7 +10,7 @@
  */
 (function(){
   const D=window.OS_DATA;
-  const {pick,randInt,APPS}=D;
+  const {pick,randInt,APPS,escHTML,safeText}=D;
   const genLayer=document.getElementById('genLayer');
   const terminal=document.getElementById('genTerminal');
   const genName=document.getElementById('genAppName');
@@ -26,8 +26,20 @@
   // pending:   app id -> 正在进行的请求（并发去重）
   // viewCache: app id -> 上次渲染的完整文档（退出再进直接恢复）
   const dataCache={}, pending={}, viewCache={};
-  // 浏览器上次访问的页面（退出再进恢复，不重新生成）
+  // 浏览器上次访问的页面（持久化到本地，刷新页面也能恢复）
+  const WEBSTATE_KEY='hallucindriod_webstate_v1';
   let webState=null;
+  try{
+    const raw=localStorage.getItem(WEBSTATE_KEY);
+    if(raw){ const o=JSON.parse(raw); if(o&&o.data)webState=o; }
+  }catch(e){}
+  function setWebState(v){
+    webState=v;
+    try{
+      if(v&&v.data)localStorage.setItem(WEBSTATE_KEY,JSON.stringify(v));
+      else localStorage.removeItem(WEBSTATE_KEY);
+    }catch(e){}
+  }
 
   function preload(id,name){
     if(id==='terminal')return Promise.resolve(null);
@@ -48,7 +60,9 @@
     if(force){ warmCursor=0; warmPauseUntil=0; }
     if(warming)return;
     warming=true;
-    const list=APPS.filter(a=>a.id!=='terminal'&&a.id!=='browser');
+    // 只预热 Dock 里的常用应用（原来预热全部 12 个，对免费端点压力过大且易触发限流）
+    const dockIds=new Set(D.DOCK_IDS||[]);
+    const list=APPS.filter(a=>a.id!=='terminal'&&a.id!=='browser'&&dockIds.has(a.id));
     while(warmCursor<list.length){
       if(Date.now()<warmPauseUntil)break;          // 用户在操作，先让路
       const a=list[warmCursor];
@@ -76,6 +90,8 @@
 
   // 伪造的「现场编写代码」——不同应用略有差异
   function codeLines(name,id){
+    // 应用名来自商店/消息，属于不可信输入：限长 + 转义后再拼进父页面 DOM
+    name=safeText(name,20);
     const comp=pick(['App','View','Screen','Panel','Widget']);
     const varN=pick(['state','model','vm','ctx','core']);
     const col=pick(['#a78bfa','#7dd3fc','#5eead4','#f472b6']);
@@ -102,8 +118,6 @@
       '<span class="cm">// ✓ 编译通过 · 正在安装到设备</span>'
     ];
   }
-
-  function escHTML(s){return s}
 
   // 逐行打印代码瀑布，完成后 resolve；fast=true 时命中缓存，动画大幅缩短
   function printCode(name,id,fast){
@@ -206,7 +220,9 @@
       const payload=JSON.stringify(llmData).replace(/</g,'\\u003c');
       html=html.replace('</head>','<script>window.__LLM='+payload+';<\/script></head>');
     }
-    const cfgPayload=JSON.stringify(D.CONFIG).replace(/</g,'\\u003c');
+    // 只下发非敏感配置：apiKey 绝不进 iframe（任何应用被注入脚本都读不到 Key）
+    const safeCfg={confidence:D.CONFIG.confidence,model:D.CONFIG.model,apiBase:D.CONFIG.apiBase,hasKey:!!D.CONFIG.apiKey};
+    const cfgPayload=JSON.stringify(safeCfg).replace(/</g,'\\u003c');
     html=html.replace('</head>','<script>window.__CFG='+cfgPayload+';<\/script></head>');
     // 浏览器：恢复上次访问的页面
     if(id==='browser'&&webState&&webState.data){
@@ -243,7 +259,7 @@
   }
 
   function regen(){
-    if(!currentId&&currentName===null)return;
+    if(currentId===null)return;
     const id=currentId,name=currentName;
     delete viewCache[id]; delete dataCache[id];
     appLayer.hidden=true;
@@ -514,15 +530,34 @@
   }
 
   // 接收 iframe 内部消息
+  // 外部站点只允许请求关闭
+  const EXTERNAL_ALLOW=['close'];
+  // 特权指令 → 唯一允许发送它的应用（最小权限：别的应用即使被注入脚本也改不了系统状态）
+  const PRIV_OWNER={
+    config:'settings', refresh:'settings', restoreApps:'settings',
+    install:'store', storegen:'store',
+    webgen:'browser', websearch:'browser', webstate:'browser',
+    termgen:'terminal',
+    musicsearch:'music', tone:'music',
+    'social:register':'messages', 'social:save':'messages', 'social:probe':'messages',
+    'social:addfriend':'messages', 'social:reply':'messages'
+  };
   window.addEventListener('message',function(e){
     if(!e.data||typeof e.data!=='object')return;
+    // ① 只信任当前应用 iframe 发来的消息，其它窗口/页面一律忽略
+    if(!frame||e.source!==frame.contentWindow)return;
+    // ② 加载第三方站点时，只允许它请求关闭
+    if(currentId==='__external__'&&EXTERNAL_ALLOW.indexOf(e.data.type)<0)return;
+    // ③ 特权指令必须由对应的应用发出
+    const owner=PRIV_OWNER[e.data.type];
+    if(owner&&currentId!==owner)return;
     if(e.data.type==='close')closeApp();
     else if(e.data.type==='regen')regen();
     else if(e.data.type==='webgen')llmGen('browser',e.data.topic||'幻卓空间',e.data.nonce);
     else if(e.data.type==='websearch')llmGen('websearch',e.data.q||'',e.data.nonce);
     else if(e.data.type==='storegen')llmGen('store',e.data.topic||'应用',e.data.nonce);
     else if(e.data.type==='termgen')termGen(String(e.data.text||''),e.data.nonce);
-    else if(e.data.type==='webstate'){ webState={topic:e.data.topic||'',data:e.data.data||null}; }
+    else if(e.data.type==='webstate'){ setWebState({topic:e.data.topic||'',data:e.data.data||null}); }
     else if(e.data.type==='social:register'){
       const nm=String(e.data.name||'').trim().slice(0,12);
       if(!nm)return;
@@ -574,7 +609,7 @@
     }
     else if(e.data.type==='refresh'){
       const rid=e.data.id||'';
-      if(!rid||rid==='browser')webState=null;
+      if(!rid||rid==='browser')setWebState(null);
       refreshData(rid);
       if(window.HOS&&window.HOS.toast)window.HOS.toast(rid?('已刷新「'+((APPS.find(a=>a.id===rid)||{}).name||rid)+'」数据'):'已刷新全部应用数据');
     }
