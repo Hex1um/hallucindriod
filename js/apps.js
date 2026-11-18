@@ -99,7 +99,8 @@
   /* ---------- 天气：城市、天气、温度全现编 ---------- */
   B.weather = function(){
     const L=(typeof window.__LLM!=='undefined'&&window.__LLM)?window.__LLM:null;
-    const baseCity=(L&&L.city)||pick(WORDS.cities);
+    const __W=(window.OS_DATA&&window.OS_DATA.ensureWorld)?window.OS_DATA.ensureWorld():null;
+    const baseCity=(__W&&__W.city)||(L&&L.city)||pick(WORDS.cities);
     const baseW=(L&&L.weather)||pick(WORDS.weather);
     const t0=(L&&typeof L.temp==='number')?L.temp:randInt(-5,41);
     // 准备 4 个城市的数据，切换时不重新请求
@@ -257,7 +258,8 @@ render();`;
     ]);
     const noteText=L&&L.text?L.text:(open+'… '+body+' '+end);
     const mood=L&&L.mood?L.mood:'✎';
-    const sign=L&&L.sign?L.sign:pick(WORDS.cities);
+    const __W3=(window.OS_DATA&&window.OS_DATA.ensureWorld)?window.OS_DATA.ensureWorld():null;
+    const sign=(L&&L.sign)||((__W3&&__W3.city)||pick(WORDS.cities));
     const color=pick(['#fde68a','#a7f3d0','#bfdbfe','#fbcfe8']);
     const dark=pick(['#3b2f12','#123a2a','#12283f','#3b1630']);
     return shell({
@@ -456,7 +458,8 @@ render();`;
   /* ---------- 地图：现编的城市与地标 ---------- */
   B.map = function(){
     const L=(typeof window.__LLM!=='undefined'&&window.__LLM)?window.__LLM:null;
-    const city=(L&&L.city)||pick(WORDS.cities), marks=(L&&Array.isArray(L.marks)&&L.marks.length>=4)?L.marks:pickN(WORDS.landmarks,4);
+    const __W2=(window.OS_DATA&&window.OS_DATA.ensureWorld)?window.OS_DATA.ensureWorld():null;
+    const city=(__W2&&__W2.city)||(L&&L.city)||pick(WORDS.cities), marks=(L&&Array.isArray(L.marks)&&L.marks.length>=4)?L.marks:pickN(WORDS.landmarks,4);
     const p=neonPalette();
     let roads='';
     for(let i=0;i<7;i++){const x=randInt(5,90),y=randInt(5,90),w=randInt(20,60);roads+='<div class="road" style="left:'+x+'%;top:'+y+'%;width:'+w+'%;transform:rotate('+randInt(0,180)+'deg)"></div>'}

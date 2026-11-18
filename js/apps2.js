@@ -1317,7 +1317,8 @@ render();`;
   /* ---------- 袋鼠外卖：本地生活首页（大众点评风格） ---------- */
   B.delivery = function(){
     const L=(typeof window.__LLM!=='undefined'&&window.__LLM)?window.__LLM:null;
-    const city=(L&&L.city)||'武汉';
+    const __W=(window.OS_DATA&&window.OS_DATA.ensureWorld)?window.OS_DATA.ensureWorld():null;
+    const city=(__W&&__W.city)||(L&&L.city)||'武汉';
     const rank=(L&&L.rank)||{title:'吃喝玩乐指南',item:'这家店悄悄火了整条街',tag:'热评榜第4名',dist:'2.9km'};
     const free=(L&&L.free)||'限时免费体验活动在线';
     let feed=(L&&Array.isArray(L.feed)&&L.feed.length)?L.feed:null;
