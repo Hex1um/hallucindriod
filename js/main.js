@@ -473,11 +473,28 @@
     if(ok)ok.onclick=dismiss;
     card.onclick=e=>{ if(e.target===card)dismiss() };
   }
+  // 故障模式：置信度很低时整机进入"做梦"状态（playbook ④）
+  const DREAM_THRESHOLD=0.15;
+  function syncDreamState(){
+    const cfg=(window.OS_DATA&&window.OS_DATA.CONFIG)||{};
+    const conf=typeof cfg.confidence==='number'?cfg.confidence:0.35;
+    const on=conf<DREAM_THRESHOLD;
+    document.body.classList.toggle('dreaming',on);
+    const tag=document.getElementById('dreamTag');
+    if(tag)tag.hidden=!on;
+    return on;
+  }
+  window.addEventListener('hallucindriod:config',syncDreamState);
+  setTimeout(syncDreamState,300);
+
   // 按系统人格取提示语
   function toneTip(){
     const Dd=window.OS_DATA||{};
     const key=(Dd.CONFIG&&Dd.CONFIG.persona)||'none';
     const P=Dd.PERSONAS&&Dd.PERSONAS[key];
+    if(document.body.classList.contains('dreaming')){
+      return pick(['系统正在做梦…','梦里出现了不存在的应用','别叫醒它','这个城市还在成形']);
+    }
     if(P&&P.tip&&P.tip.length)return pick(P.tip);
     return pick(WORDS.toastTips);
   }

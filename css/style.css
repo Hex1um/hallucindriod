@@ -241,3 +241,25 @@ body.desk-edit .home-widget{opacity:.5}
 .fate-ok{width:100%;margin-top:20px;border:none;border-radius:14px;padding:13px;
   background:linear-gradient(135deg,#a78bfa,#7c3aed);color:#fff;font-size:14px;font-weight:700;cursor:pointer}
 .fate-ok:active{opacity:.85}
+
+/* ============ 故障/做梦模式（低置信度） ============ */
+body.dreaming .app-icon,body.dreaming .dock-item{animation:dreamGlow 3.6s ease-in-out infinite}
+@keyframes dreamGlow{0%,100%{filter:none}50%{filter:hue-rotate(28deg) saturate(1.35) brightness(1.08)}}
+body.dreaming .sb-operator{color:#c4b5fd}
+body.dreaming #statusBar{background:linear-gradient(90deg,rgba(124,58,237,.18),rgba(14,116,144,.18))}
+body.dreaming .app-name{color:#c4b5fd}
+.dream-tag{position:fixed;left:50%;transform:translateX(-50%);top:calc(var(--safe-top,26px) + 4px);
+  z-index:90;font-size:9.5px;letter-spacing:1px;color:#c4b5fd;background:rgba(124,58,237,.22);
+  border:1px solid rgba(196,181,253,.3);border-radius:999px;padding:3px 10px;pointer-events:none}
+
+/* ============ 预言成真彩蛋 ============ */
+.prophecy-fx{position:fixed;inset:0;z-index:210;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;pointer-events:none;opacity:0;
+  background:radial-gradient(circle at 50% 45%,rgba(167,139,250,.28),rgba(6,6,12,.72) 62%);
+  backdrop-filter:blur(3px);transition:opacity .35s}
+.prophecy-fx.on{opacity:1;animation:pfOut .5s 2.1s forwards}
+@keyframes pfOut{to{opacity:0}}
+.prophecy-fx .pf-orb{font-size:64px;animation:pfSpin 2.4s ease-in-out infinite}
+@keyframes pfSpin{0%,100%{transform:rotate(-8deg) scale(1)}50%{transform:rotate(8deg) scale(1.12)}}
+.prophecy-fx .pf-t{margin-top:14px;font-size:22px;font-weight:800;color:#fff;letter-spacing:4px}
+.prophecy-fx .pf-n{margin-top:8px;font-size:12px;color:#c4b5fd;letter-spacing:2px}

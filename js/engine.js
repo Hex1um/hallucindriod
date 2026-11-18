@@ -150,6 +150,12 @@
   let openQueued=null;
   async function openApp(id,name,opts){
     if(busy){ openQueued=[id,name,opts]; return; }   // 排队，别静默丢掉
+    // 预言命中：刚从 A 走进来时预取过的应用，用户确实点开了
+    if(prophecy && prophecy.from!==id && prophecy.to.indexOf(id)>=0 && !(opts&&opts.dna)){
+      const n=bumpProphecy();
+      prophecy=null;
+      setTimeout(()=>showProphecy(n),900);
+    }
     noteUserActivity();
     const app=(APPS.find(a=>a.id===id));
     name=name||(app&&app.name)||'应用';
@@ -708,6 +714,41 @@
     return true;
   }
 
+  // ---------- 世界演化：让城市有"过去"（playbook ⑪） ----------
+  async function evolveWorld(){
+    const D=window.OS_DATA;
+    if(!D||!D.ensureWorld||!window.LLM)return null;
+    const w=D.ensureWorld();
+    const ctx=JSON.stringify({
+      city:w.city,
+      today:w.hotEvents||[],
+      yesterday:(w.history&&w.history[0])?w.history[0].events:[],
+      lore:(w.lore||[]).slice(-4)
+    });
+    let d=null;
+    try{ d=await window.LLM.fetchHallucination('evolve',ctx) }catch(e){ d=null }
+    if(!d||!Array.isArray(d.events)||!d.events.length)return null;
+
+    w.history=Array.isArray(w.history)?w.history:[];
+    w.history.unshift({day:w.day||'',events:(w.hotEvents||[]).slice(0,3)});
+    w.history=w.history.slice(0,10);            // 留最近 10 天
+    w.hotEvents=d.events.slice(0,3).map(x=>String(x).slice(0,40));
+    if(Array.isArray(d.echo)&&d.echo.length){
+      w.lore=((w.lore||[]).concat(d.echo.map(x=>String(x).slice(0,40)))).slice(-20);
+    }
+    w.day=new Date().toISOString().slice(0,10);
+    // 顺延命运（新的一天换身份）
+    if(D.ensurePersona){
+      w.persona=null;
+      try{ D.saveWorld(w); const w2=D.ensurePersona(); w.hotEvents=w2.hotEvents; w.persona=w2.persona; w.day=w2.day }catch(e){}
+    }
+    if(D.saveWorld)D.saveWorld(w);
+    // 世界变了 → 旧内容失效
+    Object.keys(dataCache).forEach(k=>delete dataCache[k]);
+    Object.keys(viewCache).forEach(k=>delete viewCache[k]);
+    return w;
+  }
+
   // ---------- 关联预取：打开 A 后并行预取"下一步最可能打开"的应用 ----------
   const RELATED={
     delivery:['video','messages','music'],
@@ -727,8 +768,27 @@
   };
   const prefetchQueue=[];
   let prefetching=false;
+  // 预言：打开 A 时预取 B/C，用户真的点开 B 就算"预言成真"（playbook ⑦）
+  let prophecy=null;
+  const PROPHECY_KEY='hallucindriod_prophecy_hits';
+  function prophecyHits(){ try{ return Number(localStorage.getItem(PROPHECY_KEY)||0)||0 }catch(e){ return 0 } }
+  function bumpProphecy(){ const n=prophecyHits()+1; try{ localStorage.setItem(PROPHECY_KEY,String(n)) }catch(e){} return n }
+  function showProphecy(n){
+    let el=document.getElementById('prophecyFx');
+    if(!el){
+      el=document.createElement('div');
+      el.id='prophecyFx';
+      el.className='prophecy-fx';
+      document.body.appendChild(el);
+    }
+    el.innerHTML='<div class="pf-orb">🔮</div><div class="pf-t">预言成真</div><div class="pf-n">第 '+n+' 次</div>';
+    el.classList.remove('on'); void el.offsetWidth; el.classList.add('on');
+    setTimeout(()=>el.classList.remove('on'),2600);
+  }
 
   function prefetchRelated(id){
+    const rel=(RELATED[id]||[]).slice(0,2);
+    if(rel.length)prophecy={from:id,to:rel};
     (RELATED[id]||[]).forEach(rid=>{
       if(rid===id)return;
       if(rid in dataCache||pending[rid])return;
@@ -756,7 +816,7 @@
   // 特权指令 → 唯一允许发送它的应用（最小权限：别的应用即使被注入脚本也改不了系统状态）
   const PRIV_OWNER={
     config:'settings', refresh:'settings', restoreApps:'settings',
-    'world:reset':'settings', 'persona:set':'settings',
+    'world:reset':'settings', 'persona:set':'settings', 'world:evolve':'settings',
     install:'store', storegen:'store', openapp:'store',
     regen:'__self__',
     webgen:'browser', websearch:'browser', webstate:'browser',
@@ -845,6 +905,7 @@
       Object.assign(D.CONFIG,e.data.cfg);
       if(D.saveConfig)D.saveConfig(D.CONFIG);
       if(window.HOS&&window.HOS.toast&&e.data.cfg.apiBase!==undefined)window.HOS.toast('✓ 系统配置已保存');
+      try{ window.dispatchEvent(new CustomEvent('hallucindriod:config')) }catch(err){}
     }
     else if(e.data.type==='world:reset'){
       // 换一座城：世界变了，所有基于旧世界的生成结果都要失效
@@ -854,6 +915,14 @@
       Object.keys(viewCache).forEach(k=>delete viewCache[k]);
       setWebState(null);
       if(window.HOS&&window.HOS.toast)window.HOS.toast('世界已重置 · '+(w?w.city:'新城'));
+    }
+    else if(e.data.type==='world:evolve'){
+      if(window.HOS&&window.HOS.toast)window.HOS.toast('世界正在向前推进…');
+      evolveWorld().then(w=>{
+        if(!w){ if(window.HOS&&window.HOS.toast)window.HOS.toast('推进失败，稍后再试'); return }
+        socialPush({type:'world:evolved',world:w});
+        if(window.HOS&&window.HOS.toast)window.HOS.toast('世界已推进 · '+(w.hotEvents[0]||''));
+      });
     }
     else if(e.data.type==='persona:set'){
       D.CONFIG.persona=String(e.data.key||'none');
@@ -865,7 +934,7 @@
     }
   });
 
-  window.ENGINE={openApp,closeApp,regen,warmup,refreshData,preload,hasCache,openExternal,openFromDNA,shareCurrent,buildShareLink,
+  window.ENGINE={openApp,closeApp,regen,warmup,refreshData,preload,hasCache,openExternal,openFromDNA,shareCurrent,buildShareLink,evolveWorld,
     cacheStatus(){ return {cached:Object.keys(dataCache),pending:Object.keys(pending),queue:prefetchQueue.slice()}; }};
   bindP2PInbox();
   // 已注册用户：启动时自动上线

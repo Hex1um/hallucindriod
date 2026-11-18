@@ -574,6 +574,18 @@
       +'.gsel.on .ck{background:#3b82f6;border-color:#3b82f6;color:#fff}'
       +'.gsel .gav{width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}'
       +'.gsel .gn{flex:1;font-size:13px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}'
+      +'.guess{padding:26px 22px;text-align:center}'
+      +'.gq{font-size:14px;color:#e6e7ee;line-height:1.7;margin-bottom:22px}'
+      +'.gbtns{display:flex;gap:12px}'
+      +'.gbtns button{flex:1;border:none;border-radius:14px;padding:16px;font-size:15px;font-weight:700;cursor:pointer}'
+      +'.gb1{background:rgba(255,255,255,.1);color:#e6e7ee}'
+      +'.gb2{background:linear-gradient(135deg,#a78bfa,#7c3aed);color:#fff}'
+      +'.gstat{font-size:11px;color:#8b90a5;margin-top:18px}'
+      +'.gres{margin-top:16px}'
+      +'.grb{font-size:17px;font-weight:700;margin-bottom:8px}'
+      +'.grb.ok{color:#4ade80}.grb.no{color:#f87171}'
+      +'.gra{font-size:12.5px;color:#c9cad6;line-height:1.7}'
+      +'.gback{margin-top:18px;width:100%;border:none;border-radius:12px;padding:12px;background:rgba(255,255,255,.1);color:#e6e7ee;font-size:13px;cursor:pointer}'
       +'.qtop{display:flex;align-items:center;gap:15px;padding:11px 14px 4px}'
       +'.qtop .ic{font-size:19px;color:#d5d7e0;line-height:1;cursor:pointer;flex-shrink:0}'
       +'.qtop .ic:active{opacity:.55}'
@@ -745,7 +757,8 @@ function renderProbe(p,exists){
   if(!res)return;
   var av=esc(p.avatar||'👤');
   var bio=esc(p.bio||'这个人很神秘，什么都没留下');
-  var tag=exists?'已在好友列表':(p.isAI?'AI 生成的聊天对象':'真人 · 当前在线');
+  // 图灵测试（playbook ⑧）：不标真假，只说在不在
+  var tag=exists?'已在好友列表':(p.online===false?'当前离线':'当前在线');
   res.innerHTML='<div class="pcard"><div class="pav" style="background:'+GRADS[(p.name||'u').length%GRADS.length]+'">'+av+'</div>'
     +'<div class="pinfo"><b>'+esc(p.name||'')+'</b>'
     +'<div class="pbio">'+bio+'</div><span class="ptag">'+tag+'</span></div></div>'
@@ -810,6 +823,7 @@ function openSheet(title,inner){
   ov.classList.add('on');document.getElementById('ovbk').onclick=function(){ov.classList.remove('on')};
 }
 var curFriend=null;
+var TURING_KEY='hallucindriod_turing_v1';
 function openChat(i){
   var f=(S.friends||[])[i]; if(!f)return;
   curFriend=f.name;
@@ -818,10 +832,40 @@ function openChat(i){
   }).join('');
   ov.innerHTML='<div class="ovh"><button id="ovbk">‹</button><b>'+esc(f.name)+'</b>'
     +'<span class="st">'+(f.isGroup?'群聊':(f.isAI?'在线':'好友'))+'</span>'
-    +'<button id="ovMore" style="margin-left:auto;font-size:20px;color:#8b90a5">⋯</button></div>'
+    +'<button id="ovGuess" style="margin-left:auto;font-size:11px;color:#c4b5fd;background:rgba(124,58,237,.2);border:none;border-radius:999px;padding:5px 10px">猜猜 TA</button>'
+    +'<button id="ovMore" style="margin-left:6px;font-size:20px;color:#8b90a5">⋯</button></div>'
     +'<div class="ovb" id="ovb">'+(msgs||'<div style="text-align:center;color:#6b7080;font-size:11.5px;padding:30px">开始聊天吧</div>')+'</div>'
     +'<div class="ovin"><input id="ovi" placeholder="发消息…"><button id="ovs">发送</button></div>';
   ov.classList.add('on');
+  var gb=document.getElementById('ovGuess');
+  if(gb)gb.onclick=function(){
+    if(f.isGroup){ toast('群聊不参与测试'); return }
+    var k=TURING_KEY;
+    var st={total:0,correct:0};
+    try{ st=Object.assign(st,JSON.parse(localStorage.getItem(k)||'{}')) }catch(e){}
+    var isAI=!!f.isAI;
+    ov.innerHTML='<div class="ovh"><button id="ovbk2">‹</button><b>猜猜 TA</b></div>'
+      +'<div class="guess"><div class="gq">你刚聊的这位，是人类还是 AI？</div>'
+      +'<div class="gbtns"><button class="gb1" data-g="0">人类</button><button class="gb2" data-g="1">AI</button></div>'
+      +'<div class="gstat">已测 '+st.total+' 次 · 猜对 '+st.correct+' 次'+(st.total?('（'+Math.round(st.correct/st.total*100)+'%）'):'')+'</div>'
+      +'<div class="gres" id="gres"></div></div>';
+    document.getElementById('ovbk2').onclick=function(){ openChat(i) };
+    ov.querySelectorAll('.gbtns button').forEach(function(b){
+      b.onclick=function(){
+        var guess=this.getAttribute('data-g')==='1';
+        var right=(guess===isAI);
+        st.total++; if(right)st.correct++;
+        try{ localStorage.setItem(k,JSON.stringify(st)) }catch(e){}
+        var res=document.getElementById('gres');
+        res.innerHTML='<div class="grb '+(right?'ok':'no')+'">'+(right?'✓ 猜对了':'✗ 猜错了')+'</div>'
+          +'<div class="gra">TA 其实是 '+(isAI?'一个 AI 生成的角色':'一个真人好友')+'</div>'
+          +'<div class="gstat">累计 '+st.total+' 次 · 准确率 '+Math.round(st.correct/st.total*100)+'%</div>'
+          +'<button class="gback" id="gback">回到聊天</button>';
+        var gb2=document.getElementById('gback');
+        if(gb2)gb2.onclick=function(){ openChat(i) };
+      };
+    });
+  };
   var body=document.getElementById('ovb'),inp=document.getElementById('ovi');
   body.scrollTop=body.scrollHeight;
   document.getElementById('ovbk').onclick=function(){ov.classList.remove('on')};
@@ -1118,6 +1162,14 @@ render();`;
         +'.wline{font-size:11.5px;color:#8b90a5;margin-top:8px;line-height:1.6}'
         +'.wev{font-size:10.5px;color:#6f7488;margin-top:10px;line-height:1.8}'
         +'.whint{font-size:10px;color:#5f6478;margin-top:10px;line-height:1.6}'
+        +'.wbtns{display:flex;gap:8px;margin-top:12px}'
+        +'.wbtns .rall{flex:1;margin:0}'
+        +'.whist{margin-top:14px;padding-top:10px;border-top:1px solid rgba(255,255,255,.07)}'
+        +'.whtitle{font-size:10.5px;color:#8b90a5;margin-bottom:8px}'
+        +'.whrow{display:flex;gap:8px;font-size:10.5px;color:#7f8496;padding:4px 0;line-height:1.5}'
+        +'.whday{color:#5f6478;flex-shrink:0}'
+        +'.whev{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}'
+        +'.wlore{margin-top:12px;font-size:10.5px;color:#a78bfa;line-height:1.6}'
         +'.prow{display:flex;flex-wrap:wrap;gap:8px;padding:14px}'
         +'.pbtn{border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.05);color:#c9cad6;font-size:12px;padding:8px 14px;border-radius:999px;cursor:pointer}'
         +'.pbtn.on{background:rgba(124,58,237,.35);border-color:rgba(124,58,237,.6);color:#fff;font-weight:600}',
@@ -1141,8 +1193,14 @@ render();`;
         +'<div class="wrole">'+(W&&W.persona?('今日身份 · '+W.persona.role):'今日身份 · 未定')+'</div>'
         +'<div class="wline">'+(W&&W.persona?('「'+W.persona.line+'」'):'')+'</div>'
         +(W&&W.hotEvents&&W.hotEvents.length?('<div class="wev">'+W.hotEvents.slice(0,2).map(x=>'· '+x).join('<br>')+'</div>'):'')
-        +'<button class="rall" id="worldReset" style="margin-top:12px">换一座城</button>'
-        +'<div class="whint">13 个应用共享同一座城，换城后所有内容会跟着变</div></div></div>'
+        +'<div class="wbtns"><button class="rall" id="worldEvolve">推进一天</button>'
+        +'<button class="rall" id="worldReset">换一座城</button></div>'
+        +((W&&W.history&&W.history.length)?('<div class="whist"><div class="whtitle">编年史</div>'
+          +W.history.slice(0,3).map(h=>'<div class="whrow"><span class="whday">'+esc(h.day||'')+'</span>'
+            +'<span class="whev">'+esc((h.events||[])[0]||'')+'</span></div>').join('')
+          +'</div>'):'')
+        +((W&&W.lore&&W.lore.length)?('<div class="wlore">💭 '+esc(W.lore[W.lore.length-1])+'</div>'):'')
+        +'<div class="whint">13 个应用共享同一座城 · 「推进一天」会让昨天的事在今天发酵</div></div></div>'
         +'<div class="grp card"><div class="gl">🎭 系统人格</div>'
         +'<div class="prow">'+personaBtns+'</div>'
         +'<div class="whint" id="pTone">'+(PERSONAS[curPersona]?('当前：'+PERSONAS[curPersona].name+' · '+PERSONAS[curPersona].tone):'')+'</div></div>'
@@ -1169,6 +1227,9 @@ render();`;
         +'apiKey:document.getElementById("apiKey").value.trim(),model:document.getElementById("model").value.trim()||"openai-fast"};'
         +'if(!c.apiKey)delete c.apiKey;'
         +'parent.postMessage({type:"config",cfg:c},"*");this.textContent="✓ 已保存";var s=this;setTimeout(function(){s.textContent="保存设置"},1500)};'
+        +'var ev=document.getElementById("worldEvolve");'
+        +'if(ev)ev.onclick=function(){parent.postMessage({type:"world:evolve"},"*");this.textContent="推进中…";'
+        +'var b=this;setTimeout(function(){b.textContent="推进一天"},1200);};'
         +'var wr=document.getElementById("worldReset");'
         +'if(wr)wr.onclick=function(){parent.postMessage({type:"world:reset"},"*");this.textContent="正在换城…";'
         +'var b=this;setTimeout(function(){b.textContent="换一座城";location.reload()},900)};'
