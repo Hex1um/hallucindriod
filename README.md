@@ -1,38 +1,44 @@
 # 幻卓 Huandroid
 
-> 一台靠幻觉现编应用的安卓手机 —— 纯前端、零构建的交互演示。
+> 一台会现场生成应用的安卓手机 —— 纯前端、零构建的交互演示。
 
-搜一个不存在的应用，它会「现场现编」一个出来；每次打开都不一样，关掉即忘。
+锁屏、桌面、文件夹、应用抽屉、控制中心、三键导航，全部按真实安卓 UI 还原。点开任意应用，内容由大模型实时生成；搜一个不存在的应用，它也会当场被"造"出来。
 
 ## 运行
 
 纯静态站点，无需构建：
 
 ```bash
-# 直接双击 index.html，或起一个静态服务器
 python -m http.server 8080
 ```
 
-打开 <http://localhost:8080> 即可。
+打开 <http://localhost:8080> 即可（建议用线上地址体验完整 AI 能力，见文末）。
 
 ## 结构
 
 ```
-index.html        页面结构（桌面 / 抽屉 / 控制中心 / 锁屏 / 生成层）
-css/style.css     样式
-js/data.js        应用数据、Dock、词库
-js/apps.js        幻觉应用生成器（一）
-js/apps2.js       幻觉应用生成器（二）
-js/llm.js         Pollinations.ai 免费 LLM 幻觉层
+index.html        页面结构（状态栏 / 桌面 / 文件夹 / 抽屉 / 控制中心 / 锁屏 / 安装层）
+css/style.css     样式（拟真图标、不透明锁屏、三键导航）
+js/data.js        应用注册表（SVG 拟真图标）、Dock、文件夹、词库、农历
+js/apps.js        应用生成器（一）
+js/apps2.js       应用生成器（二）
+js/llm.js         LLM 层：多源竞速 + fallback
 js/engine.js      现编引擎
 js/main.js        主程序
 ```
 
-## 说明
+## LLM 多源策略
 
-- 零依赖、零构建，全部为原生 HTML / CSS / JavaScript。
-- AI 现编能力通过 `js/llm.js` 调用免费 LLM 接口；无网络时回退到内置幻觉引擎。
-- 生成内容仅存于本次会话，不做持久化。
+`js/llm.js` 采用"竞速 + 逐级 fallback"，优先使用真·大模型，而非随机词库：
+
+1. **自定义端点**：设置里填 OpenAI 兼容 API（最稳）。
+2. **Pollinations**（`text.pollinations.ai`，免 Key，CORS `*`）：`openai-fast` 与 `openai` 双模型竞速，快的胜出、慢的自动取消。
+3. **备用源**：Pollinations 文本端点 + **AI Horde**（众包 GPU 网络，免 Key，CORS `*`）。
+4. 全部失败才回退本地词库，状态栏会显示"离线模式"，不伪装成 AI 生成。
+
+> 注：Pollinations 对生产域名 `hex1um.github.io` 直接 CORS 放行；对 `localhost` 等未登记来源会要求 Turnstile 验证，此时自动切到 AI Horde。因此**线上体验最佳**。
+
+可在「设置」里调 `置信度`（0 = 天马行空，1 = 贴近现实）与自定义 API。
 
 ## 在线预览
 

@@ -22,8 +22,8 @@
     +(cfg.css||'')+'</style></head><body>'
     +'<div class="abar"><button class="ab-btn" onclick="parent.postMessage({type:\'close\'},\'*\')">‹ 返回</button>'
     +'<div class="ab-title">'+(cfg.icon||'✦')+' '+(cfg.title||'应用')+'</div>'
-    +'<button class="ab-btn" style="text-align:right" onclick="parent.postMessage({type:\'regen\'},\'*\')">🎲 重编</button></div>'
-    +'<div class="ab-badge">✦ 本应用由幻觉引擎现场编写 · 未缓存 · 本次长这样</div>'
+    +'<button class="ab-btn" style="text-align:right" onclick="parent.postMessage({type:\'regen\'},\'*\')">⟳ 刷新</button></div>'
+    +'<div class="ab-badge">数据更新于刚刚 · 版本 1.0</div>'
     +'<div class="ab-body">'+(cfg.html||'')+'</div><script>'+(cfg.js||'')+'</script></body></html>';
   }
 
@@ -32,7 +32,7 @@
     const pal=neonPalette(), adj=pick(WORDS.adjectives), noun=pick(WORDS.nouns);
     const title=pick([topic+'官网',topic+' · 全球领先',pick(WORDS.adjectives)+topic+'网','关于'+topic+'的一切']);
     const paras=[
-      '欢迎来到'+title+'。我们是一家专注于'+adj+noun+'的幻觉企业，致力于为您带来'+pick(WORDS.adjectives)+'的体验。',
+      '欢迎来到'+title+'。我们是一家专注于'+adj+noun+'的科技企业，致力于为您带来'+pick(WORDS.adjectives)+'的体验。',
       '我们的使命是让每一个'+noun+'都能拥有自己的'+pick(WORDS.nouns)+'。成立以来，我们已服务超过 '+randInt(1,999)+' 万用户（数据由 AI 估算）。',
       '成立于 '+randInt(2019,2026)+' 年，总部位于'+pick(WORDS.cities)+'，在'+pick(WORDS.landmarks)+'设有分部。'
     ];
@@ -44,7 +44,7 @@
         +'<h1>'+adj+topic+'</h1><p>在'+pick(WORDS.adjectives)+'的世界里，拥有一个'+noun+'</p><button class="scta">立即体验 →</button></div>'
         +'<div class="sbody"><h2>关于我们</h2>'+paras.map(p=>'<p>'+p+'</p>').join('')
         +'<div class="scards">'+pickN(WORDS.appIdeas,3).map(x=>'<div class="sc"><b>'+x+'</b><span>'+pick(WORDS.storeDesc)+'</span></div>').join('')+'</div>'
-        +'<p class="muted" style="font-size:10px;text-align:center;margin-top:24px">© '+randInt(2020,2026)+' '+title+' · 本网页由幻觉现编，与任何真实网站无关</p></div></div>'
+        +'<p class="muted" style="font-size:10px;text-align:center;margin-top:24px">© '+randInt(2020,2026)+' '+title+' · 本页面为演示内容，仅供参考</p></div></div>'
     };
   }
 
@@ -58,9 +58,9 @@
       s.html='<div class="site" style="font-family:-apple-system,sans-serif">'
         +'<div class="snav"><b>'+L.title+'</b><div><span class="fl">首页</span><span class="fl">产品</span><span class="fl">关于</span></div></div>'
         +'<div class="shero" style="background:linear-gradient(135deg,'+s.pal.a+','+s.pal.b+')"><div class="shero-e">🌐</div>'
-        +'<h1>'+(L.headline||L.title)+'</h1><p>由 Pollinations LLM 现场编写</p><button class="scta">立即体验 →</button></div>'
-        +'<div class="sbody"><h2>关于本站</h2><p>'+(L.desc||'本站内容由幻觉引擎实时生成。')+'</p>'
-        +'<p class="muted" style="font-size:10px;text-align:center;margin-top:24px">© 2026 '+L.title+' · 本网页由幻觉现编，与真实网站无关</p></div></div>';
+        +'<h1>'+(L.headline||L.title)+'</h1><p>内容由在线服务生成</p><button class="scta">立即体验 →</button></div>'
+        +'<div class="sbody"><h2>关于本站</h2><p>'+(L.desc||'本站内容实时更新。')+'</p>'
+        +'<p class="muted" style="font-size:10px;text-align:center;margin-top:24px">© 2026 '+L.title+' · 本页面为演示内容，仅供参考</p></div></div>';
       const start=s;
       return browserShell(start,topics);
     }
@@ -87,7 +87,7 @@
         +'.suggest h4{color:#8b90a5;font-size:11px;margin:0 0 12px}',
       html:'<div id="appFrameHost"><div class="bbar">'
         +'<button id="back">‹</button><button id="fwd">›</button><button id="home">⌂</button>'
-        +'<div class="url">🔒 <input id="urlIn" value="https://'+start.title.replace(/\s/g,'')+'.xyz" placeholder="输入任意网址，现场编给你"></div>'
+        +'<div class="url">🔒 <input id="urlIn" value="https://'+start.title.replace(/\s/g,'')+'.xyz" placeholder="输入网址或搜索关键词"></div>'
         +'<button id="go">↻</button></div><div class="web" id="web">'+start.html+'</div></div>',
       js:'var topics='+JSON.stringify(topics)+',history=[],hidx=-1;'
         +'var web=document.getElementById("web"),urlIn=document.getElementById("urlIn");'
@@ -100,7 +100,7 @@
         +'var p=pal(),adj=P(adjs),noun=P(nouns),title=P([topic+"官网",topic+" · 全球领先",P(adjs)+topic+"网","关于"+topic+"的一切"]);'
         +'var emos=["🛸","🌙","🪐","💎","🌈","🧊","🔮"];'
         +'var links=["首页","产品","关于我们","新闻","招聘","联系我们"].map(function(x){return "<span class=fl>"+x+"</span>"}).join("");'
-        +'var paras=["欢迎来到"+title+"。我们是一家专注于"+adj+noun+"的幻觉企业，致力于为您带来"+P(adjs)+"的体验。",'
+        +'var paras=["欢迎来到"+title+"。我们是一家专注于"+adj+noun+"的科技企业，致力于为您带来"+P(adjs)+"的体验。",'
         +'"我们的使命是让每一个"+noun+"都能拥有自己的"+P(nouns)+"。已服务超过 "+(1+Math.floor(Math.random()*999))+" 万用户（数据由 AI 估算）。",'
         +'"成立于 "+(2019+Math.floor(Math.random()*7))+" 年，总部位于"+P(cities)+"，在"+P(lands)+"设有分部。"];'
         +'var cards="";for(var i=0;i<3;i++){cards+="<div class=sc><b>"+P(ideas)+"</b><span>"+P(descs)+"</span></div>"}'
@@ -108,7 +108,7 @@
         +'+"<div class=shero style=\\"background:linear-gradient(135deg,"+p.a+","+p.b+")\\"><div class=shero-e>"+P(emos)+"</div>"'
         +'+"<h1>"+adj+topic+"</h1><p>在"+P(adjs)+"的世界里，拥有一个"+noun+"</p><button class=scta>立即体验 →</button></div>"'
         +'+"<div class=sbody><h2>关于我们</h2>"+paras.map(function(x){return "<p>"+x+"</p>"}).join("")'
-        +'+"<div class=scards>"+cards+"</div><p style=\\"font-size:10px;text-align:center;color:#999;margin-top:24px\\">© 2026 "+title+" · 本网页由幻觉现编，与真实网站无关</p></div></div>";}'
+        +'+"<div class=scards>"+cards+"</div><p style=\\"font-size:10px;text-align:center;color:#999;margin-top:24px\\">© 2026 "+title+" · 本页面为演示内容，仅供参考</p></div></div>";}'
         +'function nav(topic){var kw=topic.trim()||P(topics);urlIn.value="https://"+kw.replace(/\\s/g,"")+".xyz";web.innerHTML=build(kw);web.scrollTop=0;}'
         +'document.getElementById("go").onclick=function(){nav(urlIn.value.replace(/^https?:\\/\\//,"").replace(/\\.xyz$/, ""))};'
         +'urlIn.onkeydown=function(e){if(e.key==="Enter"){document.getElementById("go").click();urlIn.blur()}};'
@@ -136,7 +136,7 @@
         +'.shutter:active{transform:scale(.92)}'
         +'.thumb{width:46px;height:46px;border-radius:10px;background:#222;display:flex;align-items:center;justify-content:center;font-size:22px}',
       html:'<div class="cm"><div class="view" id="view"><div class="grid"></div>'
-        +'<div class="stamp">幻觉相机 · 自动对焦中…</div><div class="scene" id="scene">'+pick(['🌇','🌊','🐈','🌌','🛸','🌸'])+'</div>'
+        +'<div class="stamp">相机 · 自动对焦中…</div><div class="scene" id="scene">'+pick(['🌇','🌊','🐈','🌌','🛸','🌸'])+'</div>'
         +'<div class="flash" id="flash"></div></div>'
         +'<div class="ctrls"><button id="flip">🔄</button><div class="shutter" id="shutter">📸</div><div class="thumb" id="thumb">🖼️</div></div></div>',
       js:'var scene=document.getElementById("scene"),flash=document.getElementById("flash"),thumb=document.getElementById("thumb");'
@@ -153,7 +153,7 @@
     const L=(typeof window.__LLM!=='undefined'&&window.__LLM)?window.__LLM:null;
     const llms=L&&Array.isArray(L.msgs)?L.msgs:null;
     const contact=(L&&L.contact)||pick(WORDS.contacts), msgs=llms?llms.map(x=>x.text):pickN(WORDS.messages,randInt(3,5));
-    let bubbles='<div class="tsys">今天 · 对话由'+(L?'Pollinations LLM ': '幻觉')+'生成</div>';
+    let bubbles='<div class="tsys">今天 · 消息已加密</div>';
     msgs.forEach((m,i)=>{
       const mine=llms?(llms[i].me===true):chance(.5);
       bubbles+='<div class="bub '+(mine?'me':'them')+'">'+m+'<span>'+pick(['9:41','9:42','10:08','昨天','刚刚'])+'</span></div>';
@@ -172,12 +172,12 @@
         +'.inputbar input{flex:1;background:rgba(255,255,255,.08);border:none;border-radius:999px;padding:10px 14px;color:#fff;outline:none;font-size:13px}'
         +'.inputbar button{border:none;border-radius:50%;width:38px;height:38px;background:#22c55e;color:#062a17;font-size:17px;cursor:pointer}',
       html:'<div class="msg"><div class="bubs" id="bubs">'+bubbles+'</div>'
-        +'<div class="inputbar"><input id="in" placeholder="发条消息（对方会幻觉回复）…"><button id="send">➤</button></div></div>',
+        +'<div class="inputbar"><input id="in" placeholder="输入消息…"><button id="send">➤</button></div></div>',
       js:'var bubs=document.getElementById("bubs"),inp=document.getElementById("in"),replies='+JSON.stringify(replies)+';'
         +'function add(txt,me){var d=document.createElement("div");d.className="bub "+(me?"me":"them");d.textContent=txt;'
         +'var s=document.createElement("span");s.textContent="刚刚";d.appendChild(s);bubs.appendChild(d);bubs.scrollTop=bubs.scrollHeight}'
         +'function send(){var v=inp.value.trim();if(!v)return;add(v,true);inp.value="";'
-        +'setTimeout(function(){add("（正在幻觉中…）",false)},300);'
+        +'setTimeout(function(){add("（对方正在输入…）",false)},300);'
         +'setTimeout(function(){var last=bubs.querySelector(".bub.them:last-child");if(last)last.remove();'
         +'add(replies[Math.floor(Math.random()*replies.length)],false)},1400)}'
         +'document.getElementById("send").onclick=send;inp.onkeydown=function(e){if(e.key==="Enter")send()}'
@@ -204,7 +204,7 @@
         +'.verdict{margin:18px 0;padding:16px;font-size:14px;line-height:1.6}'
         +'.again{border:none;border-radius:999px;padding:11px 24px;background:#2dd4bf;color:#062b28;font-weight:700;cursor:pointer;font-size:13px}',
       html:'<div class="fs"><div class="fishbig">🐟</div><h2>摸鱼检测仪 PRO</h2>'
-        +'<div class="sub">基于 '+randInt(3,99)+' 个传感器与纯幻觉算法</div>'
+        +'<div class="sub">基于 '+randInt(3,99)+' 个传感器实时监测</div>'
         +'<div class="meter"><i id="meter"></i></div><div class="pct"><span id="pct">0</span>%</div>'
         +'<div class="verdict card" id="verdict">检测中… 请勿直视摄像头</div>'
         +'<button class="again" id="again">🎲 再测一次</button></div>',
@@ -256,7 +256,7 @@
         +'<canvas id="cv" width="280" height="280"></canvas>'
         +'<div class="dp"><span></span><button data-d="up">↑</button><span></span>'
         +'<button data-d="left">←</button><button data-d="down">↓</button><button data-d="right">→</button></div>'
-        +'<div class="hint">撞墙或撞自己就结束 · 蛇由幻觉驱动</div></div>',
+        +'<div class="hint">撞墙或撞自己就结束 · 按方向键控制</div></div>',
       js:'var cv=document.getElementById("cv"),ctx=cv.getContext("2d"),S=20,N=cv.width/S,'
         +'snake=[{x:8,y:8},{x:7,y:8},{x:6,y:8}],dir={x:1,y:0},food={x:14,y:8},score=0,over=false,sc=document.getElementById("sc");'
         +'function draw(){ctx.fillStyle="#0a1410";ctx.fillRect(0,0,cv.width,cv.height);'
@@ -291,11 +291,11 @@
         +'.screen-call .av{font-size:80px}.screen-call .nm{font-size:24px;margin:10px 0}.screen-call .st{font-size:12px;color:#8b90a5}'
         +'.hang{border:none;border-radius:50%;width:66px;height:66px;background:#ef4444;color:#fff;font-size:26px;margin-top:60px;cursor:pointer}'
         +'.del{border:none;background:none;color:#8b90a5;font-size:14px}',
-      html:'<div class="ph"><div class="sub">幻觉拨号盘 · 随便拨都能接通</div><div class="num" id="num">_</div>'
+      html:'<div class="ph"><div class="sub">拨号盘 · 输入号码</div><div class="num" id="num">_</div>'
         +'<div class="pad">'+nums.map(n=>'<button data-n="'+n+'">'+n+'</button>').join('')+'</div>'
         +'<button class="call" id="call">📞</button></div>'
         +'<div class="screen-call" id="sc"><div class="av">'+pick(['🤖','👽','🐈','🧑‍🚀','📞'])+'</div>'
-        +'<div class="nm" id="cn">未知号码</div><div class="st" id="cs">正在接通（幻觉信号）…</div>'
+        +'<div class="nm" id="cn">未知号码</div><div class="st" id="cs">正在接通…</div>'
         +'<button class="hang" id="hang">📵</button></div>',
       js:'var num="",numEl=document.getElementById("num");'
         +'document.querySelectorAll(".pad button").forEach(function(b){b.onclick=function(){'
@@ -328,13 +328,13 @@
         +'.bar{width:60%;background:linear-gradient(#fb7185,#be123c);border-radius:6px 6px 0 0;min-height:4px}'
         +'.barwrap span{font-size:9px;color:#8b90a5}'
         +'.tip{margin-top:16px;text-align:center;font-size:11px;color:#7c8096}',
-      html:'<div class="hl"><h3>今日健康 · 由幻觉手环同步</h3>'
+      html:'<div class="hl"><h3>今日健康 · 已同步手环数据</h3>'
         +'<div class="stats"><div class="stat card"><b class="red">'+steps.toLocaleString()+'</b><span>步数</span></div>'
         +'<div class="stat card"><b class="blu">'+hr+'</b><span>心率 bpm</span></div>'
         +'<div class="stat card"><b class="yel">'+sleep+'</b><span>睡眠 小时</span></div></div>'
-        +'<div class="chart card"><div class="ct">本周步数（单位：幻觉步）</div><div class="bars">'+bars+'</div></div>'
+        +'<div class="chart card"><div class="ct">本周步数</div><div class="bars">'+bars+'</div></div>'
         +(L&&L.comment?'<div class="tip" style="color:#c4b5fd">💬 '+L.comment+'</div>':'')
-        +'<div class="tip">⚠ 数据来源：'+(L?'Pollinations LLM · ':'幻觉手环 X1 · ')+'仅供参考，请勿用于就医</div></div>'
+        +'<div class="tip">⚠ 数据来源：'+(L?'在线健康服务 · ':'健康手环 X1 · ')+'仅供参考，请勿用于就医</div></div>'
     });
   };
 
@@ -348,7 +348,7 @@
       ['⚙️','系统版本',ver],
       ['💾','存储空间',randInt(32,512)+' GB / ∞ 已用'],
       ['📍','当前位置',city],
-      ['🌐','网络','幻觉 5G · 满格（其实没网）']
+      ['🌐','网络','5G 网络 · 信号良好']
     ].map(r=>'<div class="row"><span class="ri">'+r[0]+'</span><span>'+r[1]+'</span><span class="rv">'+r[2]+'</span></div>').join('');
     return shell({
       title:'设置', icon:'⚙️', accent:'#9ca3af',
@@ -372,12 +372,12 @@
         +'.about{text-align:center;padding:20px;color:#6a6e82;font-size:11px;line-height:1.8}'
         +'.about .lg{font-size:36px}.about b{display:block;font-size:15px;color:#c9cad6;margin:6px 0}',
       html:'<div class="se"><h3>系统设置</h3>'
-        +'<div class="grp card conf"><div class="gl">🎚️ 现实置信度 · 幻觉强度总开关</div>'
+        +'<div class="grp card conf"><div class="gl">🎚️ 现实置信度 · 内容风格</div>'
         +'<div class="conf-top"><span class="conf-val" id="cv">'+conf.toFixed(2)+'</span><span class="conf-mode" id="cm"></span></div>'
         +'<input type="range" id="cr" min="0" max="1" step="0.01" value="'+conf+'">'
-        +'<div class="conf-ends"><span>0 · 混沌幻觉</span><span>1 · 真实世界</span></div>'
+        +'<div class="conf-ends"><span>0 · 天马行空</span><span>1 · 真实世界</span></div>'
         +'<div class="conf-desc" id="cd"></div></div>'
-        +'<div class="grp card api"><div class="gl">🔌 大模型 API（留空用内置免费幻觉引擎）</div>'
+        +'<div class="grp card api"><div class="gl">🔌 大模型 API（留空使用内置服务）</div>'
         +'<label class="lbl">API 地址（OpenAI 兼容，需支持跨域）</label>'
         +'<input id="apiBase" placeholder="https://your-api.com/v1" value="'+(cfg.apiBase||'')+'">'
         +'<label class="lbl">API Key（可选）</label>'
@@ -387,12 +387,12 @@
         +'<button class="save" id="saveCfg">保存设置</button></div>'
         +'<div class="grp card"><div class="gl">关于本机</div>'+rows+'</div>'
         +'<div class="about card"><div class="lg">✦</div><b>幻卓 Huandroid</b>'
-        +'一台靠大模型幻觉运行的安卓手机<br>所有应用均现场编写 · 关闭即消失<br>version '+ver+'</div></div>',
+        +'一台会自己生成应用的安卓手机<br>应用由 AI 实时生成<br>version '+ver+'</div></div>',
       js:'var cr=document.getElementById("cr"),cv=document.getElementById("cv"),cm=document.getElementById("cm"),cd=document.getElementById("cd");'
         +'function mode(v){if(v>=0.8)return ["🌍 真实模式","#4ade80","内容贴近真实世界，数据合理可信，AI 保持克制。"];'
-        +'if(v>=0.5)return ["🌗 半幻觉","#fbbf24","一半真实一半荒诞，带点冷幽默，适合日常把玩。"];'
-        +'if(v>=0.2)return ["🌀 幻觉模式","#a78bfa","高度荒诞、一本正经胡说八道，这是幻卓的默认性格。"];'
-        +'return ["🫠 混沌模式","#f87171","现实开始崩塌，内容随机癫狂，像梦里的数据。"]}'
+        +'if(v>=0.5)return ["⚖️ 平衡模式","#fbbf24","真实与创意各半，带点冷幽默。"];'
+        +'if(v>=0.2)return ["✨ 创意模式","#a78bfa","天马行空、一本正经地虚构，适合找乐子。"];'
+        +'return ["🌈 幻想模式","#f87171","充满想象力，像童话或梦境一样。"]}'
         +'function upd(){var v=+cr.value,m=mode(v);cv.textContent=v.toFixed(2);cv.style.color=m[1];cm.textContent=m[0];'
         +'cm.style.background=m[1]+"22";cm.style.color=m[1];cd.textContent=m[2];'
         +'parent.postMessage({type:"config",cfg:{confidence:v}}, "*")}'
@@ -410,8 +410,8 @@
     const L=(typeof window.__LLM!=='undefined'&&window.__LLM)?window.__LLM:null;
     const pal=neonPalette(), adj=pick(WORDS.adjectives), noun=pick(WORDS.nouns);
     const features=(L&&Array.isArray(L.features)&&L.features.length)?L.features:pickN(['语音吐槽','AI 算命','自动摸鱼','量子记账','情绪识别','赛博祈福','智能找借口','梦境回放','反向打卡','电子木鱼'],3);
-    const tagline=(L&&L.tagline)?L.tagline:(adj+noun+' · 由幻觉现场创作，全球仅此一份');
-    const fl=features.map(f=>'<div class="gf"><span>✦</span><div><b>'+f+'</b><small>由'+(L?'Pollinations LLM':'幻觉引擎')+'实时驱动</small></div></div>').join('');
+    const tagline=(L&&L.tagline)?L.tagline:(adj+noun+' · 由 AI 生成，独一无二');
+    const fl=features.map(f=>'<div class="gf"><span>✦</span><div><b>'+f+'</b><small>由'+(L?'在线服务':'本地引擎')+'实时驱动</small></div></div>').join('');
     return shell({
       title:topic, icon:'✦', accent:pal.a,
       css:'.gn{padding:22px;text-align:center}'
@@ -424,8 +424,8 @@
       html:'<div class="gn"><div class="gb">'+pick(['🪄','🔮','🤖','🫧','🧊','🌈'])+'</div>'
         +'<h2>'+topic+'</h2><div class="sub">'+tagline+'</div>'
         +fl+'<button class="open" id="op">立即体验</button></div>',
-      js:'document.getElementById("op").onclick=function(){this.textContent="✦ 幻觉运行中…";'
-        +'var s=this;setTimeout(function(){s.textContent="功能正在现编，请重编 :) "},1600)}'
+      js:'document.getElementById("op").onclick=function(){this.textContent="✦ 正在运行…";'
+        +'var s=this;setTimeout(function(){s.textContent="功能正在生成，请稍候…"},1600)}'
     });
   };
 

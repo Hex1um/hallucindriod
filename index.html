@@ -4,8 +4,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="theme-color" content="#0a0a0f">
-<title>幻卓 Huandroid · 一台靠幻觉现编应用的安卓手机</title>
-<link rel="stylesheet" href="css/style.css">
+<title>幻卓 Huandroid</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='15' fill='%237c3aed'/><text x='32' y='46' font-size='40' text-anchor='middle' fill='white'>✦</text></svg>">
+<link rel="stylesheet" href="css/style.css?v=2">
 </head>
 <body>
 
@@ -14,11 +15,13 @@
 
   <!-- 状态栏 -->
   <div class="statusbar" id="statusbar">
-    <span class="sb-time" id="sbTime">9:41</span>
+    <span class="sb-left"><span class="sb-operator" id="sbOperator">中国移动</span><span class="sb-time" id="sbTime">9:41</span></span>
     <span class="sb-icons">
-      <svg width="15" height="12" viewBox="0 0 15 12"><path d="M1 9h2v2H1zM4.5 6h2v5h-2zM8 3.5h2V11H8zM11.5 1h2v10h-2z" fill="currentColor"/></svg>
-      <svg width="15" height="12" viewBox="0 0 16 12"><path d="M8 11l2-2.2a3 3 0 00-4 0L8 11zm0-4.6a6 6 0 014.2 1.7L14 6.3a8.4 8.4 0 00-12 0l1.8 1.8A6 6 0 018 6.4z" fill="currentColor"/></svg>
-      <span class="battery"><span class="battery-fill"></span></span>
+      <svg class="ic" width="14" height="12" viewBox="0 0 16 12"><path d="M1 9h2v2H1zM4.5 6h2v5h-2zM8 3.5h2V11H8zM11.5 1h2v10h-2z" fill="currentColor"/></svg>
+      <svg class="ic" width="14" height="11" viewBox="0 0 16 12"><path d="M8 11l2-2.2a3 3 0 00-4 0L8 11zm0-4.6a6 6 0 014.2 1.7L14 6.3a8.4 8.4 0 00-12 0l1.8 1.8A6 6 0 018 6.4z" fill="currentColor"/></svg>
+      <span class="sb-net">5G</span>
+      <svg class="ic" width="15" height="12" viewBox="0 0 16 12"><path d="M8 11l2-2.2a3 3 0 00-4 0L8 11zm0-4.6a6 6 0 014.2 1.7L14 6.3a8.4 8.4 0 00-12 0l1.8 1.8A6 6 0 018 6.4z" fill="currentColor"/></svg>
+      <span class="battery"><span class="battery-fill"></span></span><span class="sb-pct" id="sbPct">86</span>
     </span>
   </div>
 
@@ -28,9 +31,8 @@
   <!-- 桌面 -->
   <section class="home-screen" id="homeScreen">
     <div class="home-widget" id="homeWidget">
-      <div class="widget-date" id="widgetDate">星期三 · 11月17日</div>
+      <div class="widget-date"><span id="widgetDate">星期三 · 11月18日</span> <span class="widget-lunar" id="widgetLunar">十月十四</span></div>
       <div class="widget-clock" id="widgetClock">09:41</div>
-      <div class="widget-tip" id="widgetTip">今天也要保持幻觉在线 ✦</div>
     </div>
     <div class="app-grid" id="appGrid"></div>
     <div class="page-dots"><span class="active"></span><span></span></div>
@@ -40,71 +42,76 @@
   <section class="drawer" id="drawer">
     <div class="drawer-search">
       <svg width="16" height="16" viewBox="0 0 16 16"><circle cx="7" cy="7" r="5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M11 11l4 4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
-      <input type="text" id="searchInput" placeholder="搜应用，或编一个不存在的…" autocomplete="off">
+      <input type="text" id="searchInput" placeholder="搜索应用" autocomplete="off">
     </div>
-    <div class="drawer-label" id="drawerLabel">全部应用 · 点开即现编</div>
+    <div class="drawer-label" id="drawerLabel">全部应用</div>
     <div class="drawer-grid" id="drawerGrid"></div>
     <div class="drawer-empty" id="drawerEmpty" hidden>
-      <div class="de-emoji">🫠</div>
-      <div class="de-title">这应用不存在？</div>
-      <div class="de-sub">没关系，让幻觉现场编一个</div>
-      <button class="de-btn" id="improviseBtn">✦ 现编「<span id="improviseName"></span>」</button>
+      <div class="de-emoji">🔍</div>
+      <div class="de-title">未找到相关应用</div>
+      <div class="de-sub">检查关键词，或创建一个新应用</div>
+      <button class="de-btn" id="improviseBtn">创建「<span id="improviseName"></span>」</button>
     </div>
   </section>
 
   <!-- Dock -->
   <nav class="dock" id="dock"></nav>
 
-  <!-- 手势条 -->
-  <div class="gesture-bar" id="gestureBar"></div>
+  <!-- 三键导航 -->
+  <nav class="navbar" id="navbar">
+    <button class="nav-btn" id="navRecents" title="最近任务"><span class="nav-recents"></span></button>
+    <button class="nav-btn" id="navHome" title="主屏幕"><span class="nav-home"></span></button>
+    <button class="nav-btn" id="navBack" title="返回"><span class="nav-back"></span></button>
+  </nav>
 
   <!-- 控制中心 -->
   <div class="control-center" id="controlCenter">
     <div class="cc-grid">
-      <button class="cc-tile on" data-toggle><span class="cci">📶</span><span class="cct">WiFi</span></button>
+      <button class="cc-tile on" data-toggle><span class="cci">📶</span><span class="cct">移动数据</span></button>
       <button class="cc-tile on" data-toggle><span class="cci">🔵</span><span class="cct">蓝牙</span></button>
-      <button class="cc-tile" data-toggle><span class="cci">✈️</span><span class="cct">飞行</span></button>
-      <button class="cc-tile" data-toggle><span class="cci">🔦</span><span class="cct">手电</span></button>
-      <button class="cc-tile on" data-toggle><span class="cci">🔄</span><span class="cct">自动转</span></button>
-      <button class="cc-tile on" data-toggle><span class="cci">🌙</span><span class="cct">省电</span></button>
+      <button class="cc-tile" data-toggle><span class="cci">✈️</span><span class="cct">飞行模式</span></button>
+      <button class="cc-tile" data-toggle><span class="cci">🔦</span><span class="cct">手电筒</span></button>
+      <button class="cc-tile on" data-toggle><span class="cci">🔄</span><span class="cct">自动旋转</span></button>
+      <button class="cc-tile" data-toggle><span class="cci">🌙</span><span class="cct">勿扰模式</span></button>
     </div>
     <div class="cc-slider"><span>☀️</span><div class="cc-track"><i></i></div></div>
     <div class="cc-slider"><span>🔊</span><div class="cc-track vol"><i></i></div></div>
-    <div class="cc-foot">点空白处关闭 · 幻觉引擎运行中</div>
+    <div class="cc-foot">轻触空白处关闭</div>
   </div>
 
   <!-- Toast -->
   <div class="toast" id="toast"></div>
 
-  <!-- 生成层：AI 现编应用 -->
+  <!-- 安装层：应用生成过程 -->
   <div class="gen-layer" id="genLayer" hidden>
     <div class="gen-bg"></div>
     <div class="gen-card">
       <div class="gen-head">
-        <span class="gen-live"><i></i> LIVE · 实时录制无加速</span>
-        <span class="gen-model">幻觉引擎 v3.7</span>
+        <span class="gen-live"><i></i> 正在安装</span>
+        <span class="gen-model">幻卓应用市场</span>
       </div>
-      <div class="gen-title"><span class="gen-spin">✦</span> 正在现编 <b id="genAppName">应用</b></div>
+      <div class="gen-title"><span class="gen-spin">✦</span> <b id="genAppName">应用</b></div>
       <div class="gen-terminal" id="genTerminal"></div>
       <div class="gen-progress"><i id="genProgressBar"></i></div>
-      <div class="gen-foot"><span id="genStat">0 tokens/s</span><span>沙箱 iframe · 永不缓存</span></div>
+      <div class="gen-foot"><span id="genStat">准备中…</span><span id="genSource">正在连接网络</span></div>
     </div>
   </div>
 
   <!-- 应用层 -->
   <div class="app-layer" id="appLayer" hidden>
-    <iframe id="appFrame" title="现编应用" sandbox="allow-scripts allow-forms allow-modals allow-popups"></iframe>
+    <iframe id="appFrame" title="应用" sandbox="allow-scripts allow-forms allow-modals allow-popups"></iframe>
   </div>
 
-  <!-- 锁屏 -->
+  <!-- 锁屏（完全不透明，遮挡桌面） -->
   <div class="lockscreen" id="lockscreen">
     <div class="ls-top">
-      <div class="ls-date" id="lsDate">11月17日 星期三</div>
+      <div class="ls-date" id="lsDate">11月18日 星期三</div>
+      <div class="ls-lunar" id="lsLunar">十月十四</div>
       <div class="ls-clock" id="lsClock">09:41</div>
     </div>
     <div class="ls-notif" id="lsNotif">
       <div class="ln-icon">✦</div>
-      <div class="ln-body"><b>幻觉引擎</b><span>已就绪 · 点按或上滑解锁</span></div>
+      <div class="ln-body"><b>幻卓系统</b><span>所有应用已就绪 · 上滑解锁</span></div>
     </div>
     <div class="ls-bottom">
       <button class="ls-flash" id="lsFlash" title="手电筒">🔦</button>
@@ -115,11 +122,11 @@
 
 </div>
 
-<script src="js/data.js"></script>
-<script src="js/apps.js"></script>
-<script src="js/apps2.js"></script>
-<script src="js/llm.js"></script>
-<script src="js/engine.js"></script>
-<script src="js/main.js"></script>
+<script src="js/data.js?v=2"></script>
+<script src="js/apps.js?v=2"></script>
+<script src="js/apps2.js?v=2"></script>
+<script src="js/llm.js?v=2"></script>
+<script src="js/engine.js?v=2"></script>
+<script src="js/main.js?v=2"></script>
 </body>
 </html>

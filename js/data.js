@@ -1,29 +1,66 @@
 /* ============ 幻卓 Huandroid · 数据 ============
- * 词库 + 应用注册表。幻觉内容的核心素材。
- * 每次生成都从这里随机取样，保证「永不重样」。
+ * 应用注册表（拟真图标）+ 词库。幻觉内容的核心素材。
  */
 
-// 内置应用（图标 / 名称 / 渐变 / 搜索关键词）
-const APPS = [
-  { id:'calculator', name:'计算器',   icon:'🧮', grad:['#f59e0b','#ea580c'], kw:'计算 算数 数学 加减乘除' },
-  { id:'weather',    name:'天气',     icon:'⛅', grad:['#0ea5e9','#2563eb'], kw:'天气 气温 预报 下雨' },
-  { id:'album',      name:'相册',     icon:'🖼️', grad:['#ec4899','#8b5cf6'], kw:'相册 照片 图片 图库' },
-  { id:'notes',      name:'便签',     icon:'📝', grad:['#eab308','#f97316'], kw:'便签 笔记 备忘 日记 记录' },
-  { id:'clock',      name:'时钟',     icon:'🕐', grad:['#334155','#0f172a'], kw:'时钟 闹钟 秒表 计时' },
-  { id:'music',      name:'音乐',     icon:'🎵', grad:['#8b5cf6','#d946ef'], kw:'音乐 歌曲 播放器 听歌' },
-  { id:'map',        name:'地图',     icon:'🗺️', grad:['#10b981','#059669'], kw:'地图 导航 定位 路线' },
-  { id:'store',      name:'应用商店', icon:'🛍️', grad:['#3b82f6','#6366f1'], kw:'商店 市场 下载 安装' },
-  { id:'browser',    name:'浏览器',   icon:'🌐', grad:['#06b6d4','#3b82f6'], kw:'浏览器 上网 网页 搜索' },
-  { id:'camera',     name:'相机',     icon:'📷', grad:['#64748b','#334155'], kw:'相机 拍照 摄影 照片' },
-  { id:'messages',   name:'短信',     icon:'💬', grad:['#22c55e','#16a34a'], kw:'短信 消息 聊天 微信 对话' },
-  { id:'fish',       name:'摸鱼检测', icon:'🐟', grad:['#14b8a6','#0d9488'], kw:'摸鱼 检测 划水 检测 游戏' },
-  { id:'game',       name:'小游戏',   icon:'🎮', grad:['#f43f5e','#be123c'], kw:'游戏 俄罗斯方块 贪吃蛇 玩' },
-  { id:'phone',      name:'电话',     icon:'📞', grad:['#22c55e','#15803d'], kw:'电话 拨号 通话 打电话' },
-  { id:'health',     name:'健康',     icon:'❤️', grad:['#ef4444','#dc2626'], kw:'健康 步数 运动 心率 睡眠' },
-  { id:'settings',   name:'设置',     icon:'⚙️', grad:['#6b7280','#374151'], kw:'设置 系统 关于 配置' },
-];
+// ---------- 拟真 App 图标：品牌色圆角底 + 白色 SVG 符号 ----------
+let _iconSeq=0;
+function svgIcon(bg, path, extra){
+  const gid='g'+(++_iconSeq); // 每个图标唯一渐变 id，避免 SVG 内联时相互覆盖
+  return '<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">'
+    +'<defs><linearGradient id="'+gid+'" x1="0" y1="0" x2="1" y2="1">'
+    +'<stop offset="0" stop-color="'+bg[0]+'"/><stop offset="1" stop-color="'+bg[1]+'"/>'
+    +'</linearGradient></defs>'
+    +'<rect x="0" y="0" width="64" height="64" rx="15" fill="url(#'+gid+')"/>'
+    +(extra||'')+path+'</svg>';
+}
+const W='fill="#fff"';
+const ICONS={
+  calculator: svgIcon(['#ffb340','#ff7a18'],'<g '+W+'><rect x="16" y="10" width="32" height="44" rx="6"/><rect x="20" y="14" width="24" height="10" rx="2" fill="#ffe0b3"/><circle cx="23" cy="31" r="3.2" fill="#ff7a18"/><circle cx="32" cy="31" r="3.2" fill="#ff7a18"/><circle cx="41" cy="31" r="3.2" fill="#ff7a18"/><circle cx="23" cy="40" r="3.2" fill="#ff7a18"/><circle cx="32" cy="40" r="3.2" fill="#ff7a18"/><circle cx="41" cy="40" r="3.2" fill="#ff7a18"/></g>'),
+  weather: svgIcon(['#5ec8ff','#1a73e8'],'<g '+W+'><circle cx="41" cy="23" r="9" fill="#ffe08a"/><path d="M20 42a9 9 0 0 1 9-9 11 11 0 0 1 20 4 7 7 0 0 1-2 13H22a7 7 0 0 1-2-8z"/></g>'),
+  album: svgIcon(['#ff8fb1','#c44df0'],'<g '+W+'><ellipse cx="32" cy="25" rx="8" ry="15"/><ellipse cx="32" cy="25" rx="8" ry="15" transform="rotate(60 32 25)"/><ellipse cx="32" cy="25" rx="8" ry="15" transform="rotate(120 32 25)"/></g>'),
+  notes: svgIcon(['#ffd76a','#ff9f1a'],'<g '+W+'><rect x="15" y="11" width="34" height="42" rx="5"/><rect x="21" y="21" width="22" height="2.6" rx="1.3" fill="#ff9f1a"/><rect x="21" y="29" width="22" height="2.6" rx="1.3" fill="#ff9f1a"/><rect x="21" y="37" width="16" height="2.6" rx="1.3" fill="#ff9f1a"/></g>'),
+  clock: svgIcon(['#4b5563','#111827'],'<g '+W+'><circle cx="32" cy="32" r="21" fill="none" stroke="#fff" stroke-width="4"/><path d="M32 18v15l10 6" fill="none" stroke="#fff" stroke-width="4" stroke-linecap="round"/></g>'),
+  music: svgIcon(['#ff6b6b','#c2185b'],'<g '+W+'><path d="M40 14v24a7 7 0 1 1-4-6V20l-14 3v20a7 7 0 1 1-4-6V19z"/></g>'),
+  map: svgIcon(['#4ade80','#0f9d58'],'<g '+W+'><path d="M32 10a12 12 0 0 0-12 12c0 9 12 22 12 22s12-13 12-22A12 12 0 0 0 32 10zm0 17a5 5 0 1 1 0-10 5 5 0 0 1 0 10z"/></g>'),
+  store: svgIcon(['#ff9a44','#f4511e'],'<g '+W+'><path d="M16 26h32l-3 24H19z"/><path d="M24 26v-4a8 8 0 0 1 16 0v4" fill="none" stroke="#fff" stroke-width="3.5"/><rect x="27" y="34" width="10" height="8" rx="2" fill="#f4511e"/></g>'),
+  browser: svgIcon(['#48c6ef','#1a73e8'],'<g '+W+'><circle cx="32" cy="32" r="20" fill="none" stroke="#fff" stroke-width="3.5"/><ellipse cx="32" cy="32" rx="8" ry="20" fill="none" stroke="#fff" stroke-width="2.6"/><path d="M13 32h38" stroke="#fff" stroke-width="3"/></g>'),
+  camera: svgIcon(['#9aa4b2','#3b4452'],'<g '+W+'><rect x="11" y="19" width="42" height="30" rx="6"/><path d="M22 19l4-6h12l4 6"/><circle cx="32" cy="34" r="10" fill="#3b4452"/><circle cx="32" cy="34" r="6.5" fill="#cdd4de"/></g>'),
+  messages: svgIcon(['#5ce36b','#16a34a'],'<g '+W+'><path d="M32 13c-12 0-21 7-21 17 0 5 3 10 8 13l-2 8 9-5c2 .4 4 .6 6 .6 12 0 21-7 21-17S44 13 32 13z"/></g>'),
+  fish: svgIcon(['#2dd4bf','#0d9488'],'<g '+W+'><path d="M14 32c8-11 22-13 32-4l6-6v20l-6-6C36 43 22 41 14 32z"/><circle cx="24" cy="30" r="2.4" fill="#0d9488"/></g>'),
+  game: svgIcon(['#ff6b81','#c2185b'],'<g '+W+'><path d="M20 24h24a10 10 0 0 1 10 11 8 8 0 0 1-14 6l-2-3H26l-2 3a8 8 0 0 1-14-6 10 10 0 0 1 10-11z"/><rect x="18" y="32" width="10" height="3.4" rx="1.7" fill="#c2185b"/><rect x="21.5" y="28.5" width="3.4" height="10" rx="1.7" fill="#c2185b"/><circle cx="42" cy="31" r="2.6" fill="#c2185b"/><circle cx="46" cy="36" r="2.6" fill="#c2185b"/></g>'),
+  phone: svgIcon(['#5ce36b','#128c3e'],'<g '+W+'><path d="M20 12l-6 3c-3 1.5-3 5-1 9 3 7 9 15 17 21 4 3 8 3 9 0l3-6-10-7-5 5c-5-3-9-7-12-12l5-5z"/></g>'),
+  health: svgIcon(['#ff6b6b','#d32f2f'],'<g '+W+'><path d="M32 50S12 38 12 25a11 11 0 0 1 20-6 11 11 0 0 1 20 6c0 13-20 25-20 25z"/><path d="M18 32h8l3-7 4 14 3-7h10" fill="none" stroke="#d32f2f" stroke-width="2.6" stroke-linejoin="round"/></g>'),
+  settings: svgIcon(['#9aa4b2','#4b5563'],'<g '+W+'><path d="M32 20a12 12 0 1 0 0 24 12 12 0 0 0 0-24zm0 8a4 4 0 1 1 0 8 4 4 0 0 1 0-8z"/><path d="M29 8h6l1 6 4 2 5-3 4 4-3 5 2 4 6 1v6l-6 1-2 4 3 5-4 4-5-3-4 2-1 6h-6l-1-6-4-2-5 3-4-4 3-5-2-4-6-1v-6l6-1 2-4-3-5 4-4 5 3 4-2z" opacity=".55"/></g>'),
+};
 
-const DOCK_IDS = ['phone','browser','camera','store'];
+// 内置应用（拟真图标 / 名称 / 品牌渐变 / 搜索关键词）
+const APPS = [
+  { id:'calculator', name:'计算器',   icon:'🧮', grad:['#ffb340','#ff7a18'], kw:'计算 算数 数学 加减乘除' },
+  { id:'weather',    name:'天气',     icon:'⛅', grad:['#5ec8ff','#1a73e8'], kw:'天气 气温 预报 下雨' },
+  { id:'album',      name:'相册',     icon:'🖼️', grad:['#ff8fb1','#c44df0'], kw:'相册 照片 图片 图库' },
+  { id:'notes',      name:'便签',     icon:'📝', grad:['#ffd76a','#ff9f1a'], kw:'便签 笔记 备忘 日记 记录' },
+  { id:'clock',      name:'时钟',     icon:'🕐', grad:['#4b5563','#111827'], kw:'时钟 闹钟 秒表 计时' },
+  { id:'music',      name:'音乐',     icon:'🎵', grad:['#ff6b6b','#c2185b'], kw:'音乐 歌曲 播放器 听歌' },
+  { id:'map',        name:'地图',     icon:'🗺️', grad:['#4ade80','#0f9d58'], kw:'地图 导航 定位 路线' },
+  { id:'store',      name:'应用商店', icon:'🛍️', grad:['#ff9a44','#f4511e'], kw:'商店 市场 下载 安装' },
+  { id:'browser',    name:'浏览器',   icon:'🌐', grad:['#48c6ef','#1a73e8'], kw:'浏览器 上网 网页 搜索' },
+  { id:'camera',     name:'相机',     icon:'📷', grad:['#9aa4b2','#3b4452'], kw:'相机 拍照 摄影 照片' },
+  { id:'messages',   name:'短信',     icon:'💬', grad:['#5ce36b','#16a34a'], kw:'短信 消息 聊天 对话' },
+  { id:'fish',       name:'摸鱼检测', icon:'🐟', grad:['#2dd4bf','#0d9488'], kw:'摸鱼 检测 划水' },
+  { id:'game',       name:'小游戏',   icon:'🎮', grad:['#ff6b81','#c2185b'], kw:'游戏 贪吃蛇 玩' },
+  { id:'phone',      name:'电话',     icon:'📞', grad:['#5ce36b','#128c3e'], kw:'电话 拨号 通话' },
+  { id:'health',     name:'健康',     icon:'❤️', grad:['#ff6b6b','#d32f2f'], kw:'健康 步数 运动 心率 睡眠' },
+  { id:'settings',   name:'设置',     icon:'⚙️', grad:['#9aa4b2','#4b5563'], kw:'设置 系统 关于 配置' },
+];
+APPS.forEach(a=>{ a.svg=ICONS[a.id]; });
+
+const DOCK_IDS = ['phone','browser','camera','messages','store'];
+
+// 桌面文件夹（MIUI 风格聚合）
+const FOLDERS = [
+  { name:'小爱建议', ids:['music','notes','album','game'] },
+  { name:'系统工具', ids:['clock','map','health','settings'] },
+];
 
 // ---------- 幻觉词库 ----------
 const WORDS = {
@@ -51,8 +88,8 @@ const WORDS = {
   storeDesc:['采用了最先进的幻觉技术','上线三天，评分 4.9（编的）','无需联网，纯靠想象','唯一一款会自我怀疑的应用','下载量已突破一个亿（大概）',
              '获得了 2026 年度虚构奖','体积 0KB，功能无限','内置 AI，偶尔认真'],
   systemVer:['1.0.0-beta-从未测试','3.7.9-幻觉版','0.0.1+seed','4.2.0-nightly','∞.0','2026.11.17-临时编译'],
-  toastTips:['应用是现编的，别太认真','本次生成未消耗真实算力','已在沙箱中运行，请放心胡闹','幻觉引擎状态：过度自信',
-             '提示：再点一次会编出另一个版本','数据仅存在于本次幻觉中'],
+  // 真实安卓风格的系统提示（不再自曝"现编/幻觉"）
+  toastTips:['已同步最新数据','应用已更新到最新版本','网络连接正常','存储空间充足','正在后台优化应用','系统运行流畅']
 };
 
 // 随机工具
@@ -62,23 +99,25 @@ const pickN = (arr,n) => arr.slice().sort(()=>Math.random()-.5).slice(0,n);
 const chance = p => Math.random() < p;
 const randInt = (a,b) => a + Math.floor(Math.random()*(b-a+1));
 
-// 生成一个奇怪但可用的配色
 function neonPalette(){
   const hues = [265,200,320,160,25,340,230,90];
   const h = pick(hues);
   return { a:`hsl(${h} 85% 62%)`, b:`hsl(${(h+40)%360} 85% 55%)`, bg:`hsl(${h} 45% 10%)` };
 }
 
+// 中文农历（用系统 Intl，失败时留空）
+function lunarDate(d){
+  try{
+    return new Intl.DateTimeFormat('zh-CN-u-ca-chinese',{month:'long',day:'numeric'}).format(d||new Date());
+  }catch(e){ return ''; }
+}
+
 // ---------- 系统配置：API + 置信度 ----------
-// 置信度 confidence ∈ [0,1]：
-//   → 1  LLM temperature 低、提示词要求"贴近真实世界" → 内容更正常
-//   → 0  LLM temperature 高、提示词要求"极度荒诞混乱" → 内容更离谱
-// 配置存 localStorage，跨会话保留。
 const DEFAULT_CONFIG = {
-  apiBase: '',      // 自定义 OpenAI 兼容端点，留空用内置幻觉代理
-  apiKey: '',       // 自定义端点密钥（留空则匿名）
+  apiBase: '',
+  apiKey: '',
   model: 'openai-fast',
-  confidence: 0.35  // 默认偏"幻觉"一点，符合主题
+  confidence: 0.35
 };
 function loadConfig(){
   let saved={};
@@ -90,4 +129,4 @@ function saveConfig(cfg){
 }
 const CONFIG = loadConfig();
 
-window.OS_DATA = { APPS, DOCK_IDS, WORDS, rnd, pick, pickN, chance, randInt, neonPalette, CONFIG, loadConfig, saveConfig, DEFAULT_CONFIG };
+window.OS_DATA = { APPS, DOCK_IDS, FOLDERS, WORDS, rnd, pick, pickN, chance, randInt, neonPalette, lunarDate, CONFIG, loadConfig, saveConfig, DEFAULT_CONFIG };

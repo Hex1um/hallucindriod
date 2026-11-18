@@ -1,16 +1,23 @@
-/* ============ 幻卓 Huandroid · Pollinations.ai 免费 LLM 幻觉层 ============
- * 让 LLM 真的现场编内容。失败/超时自动降级（返回 null → 用本地词库）。
- * 置信度 confidence ∈ [0,1] 控制"现实 ↔ 幻觉"：
- *   → 1：低温 + 严谨提示，内容贴近真实世界
- *   → 0：高温 + 狂野提示，内容极度随机混乱
- * 支持在设置里填自定义 OpenAI 兼容 API。
+/* ============ 幻卓 Huandroid · LLM 幻觉层（浏览器直连 · 多源竞速 + fallback） ============
+ * 关键点：
+ *  - 纯静态站没有后端，直接 fetch 免费 LLM 公共端点（必须支持 CORS）。
+ *  - 主源 Pollinations（text.pollinations.ai/openai，CORS:*，免 Key）：openai-fast / openai 竞速。
+ *    ※ Pollinations 对已登记来源（如生产域名 hex1um.github.io）CORS 放行；
+ *      对 localhost 等未知来源会要求 Turnstile token，此时会自动走下面的备用源。
+ *  - 备用源（换服务/换路径）：Pollinations 文本端点、AI Horde（众包 GPU，免 key，CORS:*）。
+ *  - 配置了自定义 OpenAI 兼容端点时优先走自定义，失败再回退内置源。
+ *  - 只有所有源都失败才返回 null → 调用方用本地词库兜底。
+ *  - 置信度 confidence ∈ [0,1] 控制「现实 ↔ 幻觉」。
  */
 (function(){
   const D=window.OS_DATA;
-  const DEFAULT_ENDPOINT='/api/llm';
-  const TIMEOUT=24000;
 
-  // 每个应用的 JSON 结构提示（内容风格由 system 提示按置信度统一控制）
+  // 竞速窗口：谁先在窗口内返回有效 JSON 就用谁；超时即切换下一个源
+  const RACE_FAST=9000;    // 阶段一（Pollinations 双模型）
+  const RACE_BACKUP=18000; // 阶段二（文本端点 / AI Horde 轮询）
+  const RACE_CUSTOM=12000; // 自定义端点
+
+  // 每个应用的 JSON 结构提示
   const SCHEMA={
     weather: n=>`为天气App编内容。格式：{"city":"城市名","weather":"天气现象","temp":数字,"tip":"一句天气提示，20字内"}。主题：${n}`,
     notes:   n=>`编一条中文便签。格式：{"text":"便签正文，35字内","mood":"一个emoji","sign":"署名地点"}。主题：${n}`,
@@ -30,30 +37,18 @@
     calculator:n=>`编一句计算器吐槽。格式：{"comment":"一句话，20字内"}。主题：${n}`
   };
 
-  // 置信度 → system 提示。接近1：真实可信；接近0：彻底幻觉
   function systemPrompt(conf){
     const pct=Math.round(conf*100);
-    if(conf>=0.8){
-      return '你是「幻卓 Huandroid」的内容引擎，当前置信度 '+pct+'%。请生成【尽量贴近真实世界、合理可信】的中文内容：数据真实、符合常识、不荒诞。只输出一个纯JSON对象，不要markdown代码块，不要任何解释文字或前后缀。';
-    }
-    if(conf>=0.5){
-      return '你是「幻卓 Huandroid」的幻觉内容引擎，当前置信度 '+pct+'%。请生成【一半真实一半荒诞、带点冷幽默】的中文创意内容。只输出一个纯JSON对象，不要markdown代码块，不要任何解释文字或前后缀。';
-    }
-    if(conf>=0.2){
-      return '你是「幻卓 Huandroid」的创意幻觉内容引擎，当前置信度 '+pct+'%。请生成【天马行空、幽默荒诞、一本正经地虚构】的中文创意内容，比如会下代码雨的天空、会用月亮煮汤的城市。只输出一个纯JSON对象，不要markdown代码块，不要任何解释文字或前后缀。';
-    }
+    if(conf>=0.8) return '你是「幻卓 Huandroid」的内容引擎，当前置信度 '+pct+'%。请生成【尽量贴近真实世界、合理可信】的中文内容：数据真实、符合常识、不荒诞。只输出一个纯JSON对象，不要markdown代码块，不要任何解释文字或前后缀。';
+    if(conf>=0.5) return '你是「幻卓 Huandroid」的幻觉内容引擎，当前置信度 '+pct+'%。请生成【一半真实一半荒诞、带点冷幽默】的中文创意内容。只输出一个纯JSON对象，不要markdown代码块，不要任何解释文字或前后缀。';
+    if(conf>=0.2) return '你是「幻卓 Huandroid」的创意幻觉内容引擎，当前置信度 '+pct+'%。请生成【天马行空、幽默荒诞、一本正经地虚构】的中文创意内容，比如会下代码雨的天空、会用月亮煮汤的城市。只输出一个纯JSON对象，不要markdown代码块，不要任何解释文字或前后缀。';
     return '你是「幻卓 Huandroid」的奇想内容引擎，当前置信度 '+pct+'%。请生成【充满想象力、超现实、像童话或梦境一样】的中文内容：奇妙的地点、不可思议的天气、有趣的虚构数据。只输出一个纯JSON对象，不要markdown代码块，不要任何解释文字或前后缀。';
   }
-  // 置信度 → temperature（1→低温稳定，0→高温狂野）
-  function temperature(conf){ return +(0.2 + (1-conf)*0.95).toFixed(2); }
-
+  function temperature(conf){ return +(0.2+(1-conf)*0.95).toFixed(2); }
   function buildUserPrompt(id,name){
-    if(id==='__generic__'||!SCHEMA[id]){
-      return '用户想要一个叫「'+name+'」的手机App。只输出纯JSON：{"tagline":"一句App广告语，20字内","features":["功能1","功能2","功能3"]}';
-    }
+    if(id==='__generic__'||!SCHEMA[id]) return '用户想要一个叫「'+name+'」的手机App。只输出纯JSON：{"tagline":"一句App广告语，20字内","features":["功能1","功能2","功能3"]}';
     return SCHEMA[id](name);
   }
-
   function extractJSON(text){
     if(!text)return null;
     let s=String(text).trim();
@@ -65,42 +60,130 @@
     try{return JSON.parse(s)}catch(e){return null}
   }
 
-  // 主入口：返回 Promise<data|null>
-  function fetchHallucination(id,name){
-    return new Promise(resolve=>{
-      const cfg=D.CONFIG;
-      const conf=Math.max(0,Math.min(1,Number(cfg.confidence)));
-      const sys=systemPrompt(conf), user=buildUserPrompt(id,name), temp=temperature(conf);
-      const custom=cfg.apiBase&&cfg.apiBase.trim();
+  // ---------- 各数据源实现：统一签名 (ctx, signal) => Promise<data|null> ----------
+  function messagesOf(ctx){ return [{role:'system',content:ctx.sys},{role:'user',content:ctx.user}]; }
 
-      const ctrl=new AbortController();
-      const timer=setTimeout(()=>{ctrl.abort();resolve(null)},TIMEOUT);
-
-      let url,headers,body;
-      if(custom){
-        // 自定义 OpenAI 兼容端点（浏览器直连，需端点支持 CORS）
-        url=cfg.apiBase.replace(/\/$/,'')+'/chat/completions';
-        headers={'Content-Type':'application/json'};
-        if(cfg.apiKey)headers['Authorization']='Bearer '+cfg.apiKey;
-        body={model:cfg.model||'gpt-4o-mini',messages:[{role:'system',content:sys},{role:'user',content:user}],temperature:temp,max_tokens:400};
-      }else{
-        // 内置幻觉代理
-        url=DEFAULT_ENDPOINT;
-        headers={'Content-Type':'application/json'};
-        body={messages:[{role:'system',content:sys},{role:'user',content:user}],temperature:temp,confidence:conf};
-      }
-
-      fetch(url,{method:'POST',headers,body:JSON.stringify(body),signal:ctrl.signal})
-        .then(r=>{if(!r.ok)throw new Error('HTTP '+r.status);return r.json()})
-        .then(j=>{
-          clearTimeout(timer);
-          const content=custom
-            ? (j&&j.choices&&j.choices[0]&&j.choices[0].message&&j.choices[0].message.content)
-            : (j&&j.content);
-          resolve(extractJSON(content));
-        })
-        .catch(()=>{clearTimeout(timer);resolve(null)});
+  // Pollinations OpenAI 兼容端点（CORS:*，免 Key）
+  async function plChat(model,ctx,signal){
+    const r=await fetch('https://text.pollinations.ai/openai',{
+      method:'POST',signal,headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({model,messages:messagesOf(ctx),temperature:ctx.temp,max_tokens:400})
     });
+    if(!r.ok)return null;
+    const j=await r.json();
+    const c=j&&j.choices&&j.choices[0]&&j.choices[0].message&&j.choices[0].message.content;
+    return extractJSON(c);
+  }
+  // Pollinations 纯文本端点（另一条路径，兜底）
+  async function plText(ctx,signal){
+    const prompt=ctx.sys+'\n\n'+ctx.user;
+    const r=await fetch('https://text.pollinations.ai/'+encodeURIComponent(prompt)+'?model=openai-fast',{signal});
+    if(!r.ok)return null;
+    return extractJSON(await r.text());
+  }
+  // AI Horde：众包 GPU 网络，免 key（anonymous key）+ CORS:*，真正的独立备用源
+  // 流程：提交异步任务 → 轮询状态直到出文本（最多约 16s）
+  async function hordeChat(ctx,signal){
+    const prompt=ctx.sys+'\n\n'+ctx.user+'\n\n只输出一个纯JSON对象。';
+    const sub=await fetch('https://aihorde.net/api/v2/generate/text/async',{
+      method:'POST',signal,
+      headers:{'Content-Type':'application/json','apikey':'0000000000'},
+      body:JSON.stringify({prompt,max_tokens:300})
+    });
+    if(!sub.ok)return null;
+    const job=await sub.json();
+    const id=job&&job.id;
+    if(!id)return null;
+    const deadline=Date.now()+16000;
+    while(Date.now()<deadline){
+      await new Promise(r=>setTimeout(r,1500));
+      if(signal&&signal.aborted)return null;
+      const s=await fetch('https://aihorde.net/api/v2/generate/text/status/'+id,{signal});
+      if(!s.ok)return null;
+      const st=await s.json();
+      if(st.done&&st.generations&&st.generations.length){
+        return extractJSON(st.generations[0].text);
+      }
+    }
+    return null;
+  }
+  // 用户自定义 OpenAI 兼容端点
+  async function customChat(ctx,signal){
+    const cfg=D.CONFIG;
+    const headers={'Content-Type':'application/json'};
+    if(cfg.apiKey)headers['Authorization']='Bearer '+cfg.apiKey;
+    const r=await fetch(cfg.apiBase.replace(/\/$/,'')+'/chat/completions',{
+      method:'POST',signal,headers,
+      body:JSON.stringify({model:cfg.model||'gpt-4o-mini',messages:messagesOf(ctx),temperature:ctx.temp,max_tokens:400})
+    });
+    if(!r.ok)return null;
+    const j=await r.json();
+    const c=j&&j.choices&&j.choices[0]&&j.choices[0].message&&j.choices[0].message.content;
+    return extractJSON(c);
+  }
+
+  // 源清单（label 用于状态行展示真实使用的源）
+  const SOURCES={
+    plFast:  {label:'Pollinations · 极速', call:(ctx,s)=>plChat('openai-fast',ctx,s)},
+    plStd:   {label:'Pollinations · 标准', call:(ctx,s)=>plChat('openai',ctx,s)},
+    plText:  {label:'Pollinations · 文本', call:(ctx,s)=>plText(ctx,s)},
+    horde:   {label:'AI Horde · 众包',    call:(ctx,s)=>hordeChat(ctx,s)}
+  };
+
+  // 竞速：窗口内第一个返回有效 JSON 者胜出；全部快速失败则提前结束
+  function race(list,ctx,winMs){
+    return new Promise(resolve=>{
+      if(!list.length){resolve(null);return}
+      let done=false,settled=0;
+      const ctrls=[],timers=[];
+      const finish=(res,winIdx)=>{
+        if(done)return;done=true;
+        timers.forEach(clearTimeout);
+        ctrls.forEach((c,i)=>{if(i!==winIdx){try{c.abort()}catch(e){}}});
+        resolve(res);
+      };
+      list.forEach((src,i)=>{
+        const ctrl=new AbortController();ctrls[i]=ctrl;
+        timers.push(setTimeout(()=>{try{ctrl.abort()}catch(e){}},winMs+4000)); // 单源硬超时
+        Promise.resolve()
+          .then(()=>src.call(ctx,ctrl.signal))
+          .then(data=>{
+            if(done)return;
+            if(data)finish({data,source:src.label},i);
+            else if(++settled===list.length)finish(null,-1);
+          })
+          .catch(()=>{if(!done&&++settled===list.length)finish(null,-1)});
+      });
+      timers.push(setTimeout(()=>finish(null,-1),winMs));
+    });
+  }
+
+  // 主入口：Promise<data|null>，并把实际使用的源写到 window.__LLM_SOURCE
+  async function fetchHallucination(id,name){
+    const cfg=D.CONFIG;
+    const conf=Math.max(0,Math.min(1,Number(cfg.confidence)));
+    const ctx={sys:systemPrompt(conf),user:buildUserPrompt(id,name),temp:temperature(conf)};
+    window.__LLM_SOURCE='';
+    window.__LLM_DIAG=[];
+
+    // 1) 自定义端点优先
+    if(cfg.apiBase&&cfg.apiBase.trim()){
+      const r=await race([{label:'自定义 API',call:customChat}],ctx,RACE_CUSTOM);
+      if(r){window.__LLM_SOURCE=r.source;return r.data}
+      window.__LLM_DIAG.push('自定义端点不可用');
+    }
+
+    // 2) 阶段一：Pollinations 双模型竞速（快的胜出，慢的被 abort）
+    let r=await race([SOURCES.plFast,SOURCES.plStd],ctx,RACE_FAST);
+    if(r){window.__LLM_SOURCE=r.source;return r.data}
+    window.__LLM_DIAG.push('Pollinations 超时/失败');
+
+    // 3) 阶段二：换源——文本端点（换路径）+ AI Horde（换服务），给足轮询时间
+    r=await race([SOURCES.plText,SOURCES.horde],ctx,RACE_BACKUP);
+    if(r){window.__LLM_SOURCE=r.source;return r.data}
+    window.__LLM_DIAG.push('备用源均不可用');
+
+    return null;
   }
 
   window.LLM={fetchHallucination,systemPrompt,temperature};

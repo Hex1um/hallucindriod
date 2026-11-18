@@ -33,9 +33,9 @@
     + '<div class="abar">'
     + '<button class="ab-btn" onclick="parent.postMessage({type:\'close\'},\'*\')">‹ 返回</button>'
     + '<div class="ab-title">'+(cfg.icon||'✦')+' '+(cfg.title||'应用')+'</div>'
-    + '<button class="ab-btn" style="text-align:right" onclick="parent.postMessage({type:\'regen\'},\'*\')">🎲 重编</button>'
+    + '<button class="ab-btn" style="text-align:right" onclick="parent.postMessage({type:\'regen\'},\'*\')">⟳ 刷新</button>'
     + '</div>'
-    + '<div class="ab-badge">✦ 本应用由幻觉引擎现场编写 · 未缓存 · 本次长这样</div>'
+    + '<div class="ab-badge">数据更新于刚刚 · 版本 1.0</div>'
     + '<div class="ab-body">'+(cfg.html||'')+'</div>'
     + '<script>'+(cfg.js||'')+'</script>'
     + '</body></html>';
@@ -91,7 +91,7 @@
     const L=(typeof window.__LLM!=='undefined'&&window.__LLM)?window.__LLM:null;
     const city = (L&&L.city)||pick(WORDS.cities), w = (L&&L.weather)||pick(WORDS.weather), emo = pick(WORDS.weatherEmoji);
     const t = (L&&typeof L.temp==='number')?L.temp:randInt(-5,41), feel = t+randInt(-4,4);
-    const aqi = randInt(20,260), aqiTxt = aqi<50?'优':aqi<100?'良':aqi<150?'轻度污染':'重污染（建议幻觉）';
+    const aqi = randInt(20,260), aqiTxt = aqi<50?'优':aqi<100?'良':aqi<150?'轻度污染':'重污染';
     const days = Array.from({length:5},(_,i)=>{
       const d=['今天','明天','后天','大后天','大大后天'][i];
       const we=pick(WORDS.weather), e=pick(WORDS.weatherEmoji), hi=t+randInt(-3,5), lo=hi-randInt(6,12);
@@ -109,12 +109,12 @@
         +'.fc{display:grid;grid-template-columns:56px 28px 1fr auto;align-items:center;gap:8px;padding:12px 2px;font-size:13px;border-bottom:1px solid rgba(255,255,255,.05)}'
         +'.fc:last-child{border:none}.fc .muted{font-size:11px;text-align:right}'
         +'.tip{margin-top:14px;font-size:11px;color:#7f93ab;text-align:center}',
-      html:'<div class="wx"><div class="city">'+city+'</div><div class="now">'+pick(WORDS.adjectives)+'天气 · 由幻觉卫星实时观测</div>'
+      html:'<div class="wx"><div class="city">'+city+'</div><div class="now">'+pick(WORDS.adjectives)+'天气 · 卫星实时观测</div>'
         +'<div class="big"><div class="e">'+emo+'</div><div class="t">'+t+'°</div><div class="d">体感 '+feel+'°<br>'+w+'</div></div>'
         +'<div class="aqi card"><span>空气质量 AQI <b>'+aqi+'</b></span><span>'+aqiTxt+'</span></div>'
         +'<div class="fcs card">'+days+'</div>'
         +(L&&L.tip?'<div class="tip" style="color:#c4b5fd">💡 '+L.tip+'</div>':'')
-        +'<div class="tip">数据来源：'+(L?'Pollinations LLM 幻觉观测 · ':'幻觉气象局 · ')+'准确率约 '+randInt(31,68)+'%</div></div>'
+        +'<div class="tip">数据来源：'+(L?'在线气象服务 · ':'本地气象数据 · ')+'更新于 '+randInt(1,9)+' 分钟前</div></div>'
     });
   };
 
@@ -171,13 +171,13 @@
         +'.ntfoot{text-align:center;color:#7c8096;font-size:11px;margin-top:22px}',
       html:'<div class="nt"><div class="paper"><h2>'+mood+' 一条便签</h2><p>'+noteText+'</p>'
         +'<div class="sig">— 写于 '+sign+'</div></div>'
-        +'<div class="ntfoot">撰写：'+(L?'Pollinations LLM 幻觉现场代笔 · ':'幻觉引擎 · ')+'存储：本次会话（关掉即忘）</div></div>'
+        +'<div class="ntfoot">编辑于 '+new Date().toLocaleDateString('zh-CN')+' · 已保存到本机</div></div>'
     });
   };
 
   /* ---------- 时钟：表盘 + 秒表 ---------- */
   B.clock = function(){
-    const tz=pick(['北京时间','幻觉标准时','UTC+∞','递归时区','赛博时间']);
+    const tz=pick(['北京时间','标准时间','UTC+8','本地时区','赛博时间']);
     return shell({
       title:'时钟', icon:'🕐', accent:'#94a3b8',
       css:'.ck{padding:24px 20px;text-align:center}'
@@ -197,7 +197,7 @@
         +'.swb button.go{background:#5eead4;color:#062b28;font-weight:700}',
       html:'<div class="ck"><div class="face"><div class="num">12</div>'
         +'<div class="hand hh" id="hh"></div><div class="hand mh" id="mh"></div><div class="hand sh" id="sh"></div><div class="dot"></div></div>'
-        +'<div class="digi" id="digi">00:00:00</div><div class="zone">'+tz+' · 由幻觉原子钟校准</div>'
+        +'<div class="digi" id="digi">00:00:00</div><div class="zone">'+tz+' · 原子钟校准</div>'
         +'<div class="sw card"><div class="swt" id="swt">00:00.00</div><div class="swb">'
         +'<button class="go" id="swbtn">开始</button><button id="swrst">归零</button></div></div></div>',
       js:'var hh=document.getElementById("hh"),mh=document.getElementById("mh"),sh=document.getElementById("sh"),'
@@ -244,7 +244,7 @@
         +'.eq{display:inline-block}.eq i{display:inline-block;width:3px;background:var(--ac);margin-left:2px;animation:eq .6s infinite alternate}'
         +'@keyframes eq{to{height:14px}}',
       html:'<div class="mu"><div class="cover" id="cover">🎧</div>'
-        +'<div class="now" id="now">'+songs[0]+'</div><div class="artist" id="artist">'+arts[0]+' · 专辑《幻觉在播放》</div>'
+        +'<div class="now" id="now">'+songs[0]+'</div><div class="artist" id="artist">'+arts[0]+' · 正在播放</div>'
         +'<div class="prog"><i id="prog"></i></div><div class="times"><span id="t1">0:00</span><span id="t2">3:42</span></div>'
         +'<div class="ctrls"><button id="prev">⏮</button><button class="play" id="play">▶</button><button id="next">⏭</button></div>'
         +'<div class="songs card" style="padding:6px 14px">'+list+'</div></div>',
@@ -254,7 +254,7 @@
         +'var emos=["🎧","🎹","🎸","🎤","🥁","🎷"];'
         +'function fmt(s){return Math.floor(s/60)+":"+String(Math.floor(s%60)).padStart(2,"0")}'
         +'function load(i){idx=(i+songs.length)%songs.length;now.textContent=songs[idx];'
-        +'artist.textContent=arts[idx]+" · 专辑《幻觉在播放》";cover.textContent=emos[idx%emos.length];pr=0;'
+        +'artist.textContent=arts[idx]+" · 正在播放";cover.textContent=emos[idx%emos.length];pr=0;'
         +'document.querySelectorAll(".song").forEach(function(e,j){e.classList.toggle("act",j===idx)});'
         +'prog.style.width="0%";t1.textContent="0:00"}'
         +'function loop(){if(playing){pr+=0.5;if(pr>=222)load(idx+1);prog.style.width=(pr/222*100)+"%";t1.textContent=fmt(pr)}}'
@@ -287,7 +287,7 @@
         +'.route{margin:0 16px 16px;padding:14px 16px;font-size:12px}'
         +'.route b{color:#6ee7b7}'
         +'.go{display:block;width:100%;margin-top:12px;border:none;border-radius:12px;padding:11px;background:#34d399;color:#062a20;font-weight:700;cursor:pointer}',
-      html:'<div class="mp"><div class="msearch">🔍 搜索「'+city+'」· 或直接开始幻觉导航</div>'
+      html:'<div class="mp"><div class="msearch">🔍 搜索「'+city+'」· 或直接开始导航</div>'
         +'<div class="mcanvas"><div class="river"></div>'+roads+pins+'</div>'
         +'<div class="route card">🛰️ 已定位到 <b>'+city+'</b> · 途经 '+marks[0]+' → '+marks[1]
         +'<br><span class="muted">全程 '+randInt(2,88)+' 公里，预计 '+randInt(5,120)+' 分钟（路况纯属虚构）</span>'
@@ -324,8 +324,8 @@
         +'.inst{border:none;border-radius:999px;padding:7px 15px;font-size:12px;background:rgba(129,140,248,.2);color:#c7d2fe;cursor:pointer}'
         +'.inst:disabled{opacity:.6}'
         +'.foot{text-align:center;color:#6a6e82;font-size:11px;margin-top:18px}',
-      html:'<div class="st"><h3>✦ 今日幻觉推荐</h3><div class="srch">🔍 搜应用（搜不到的也能现编）</div>'+cards
-        +'<div class="foot">所有应用均由幻觉上架，安装后可能不存在</div></div>'
+      html:'<div class="st"><h3>今日推荐</h3><div class="srch">🔍 搜索应用</div>'+cards
+        +'<div class="foot">应用均由官方上架 · 安全检测通过</div></div>'
     });
   };
 

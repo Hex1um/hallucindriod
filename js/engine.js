@@ -10,6 +10,7 @@
   const genName=document.getElementById('genAppName');
   const bar=document.getElementById('genProgressBar');
   const stat=document.getElementById('genStat');
+  const sourceEl=document.getElementById('genSource');
   const appLayer=document.getElementById('appLayer');
   const frame=document.getElementById('appFrame');
   let currentId=null,currentName=null,busy=false;
@@ -20,27 +21,26 @@
     const varN=pick(['state','model','vm','ctx','core']);
     const col=pick(['#a78bfa','#7dd3fc','#5eead4','#f472b6']);
     return [
-      '<span class="cm">// ✦ 幻觉引擎 v3.7 · 现场编写「'+name+'」</span>',
-      '<span class="kw">import</span> { hallucinate, render } <span class="kw">from</span> <span class="str">"os://core"</span>',
+      '<span class="cm">// 幻卓应用市场 · 正在构建「'+name+'」</span>',
+      '<span class="kw">import</span> { createApp, render } <span class="kw">from</span> <span class="str">"@huandroid/core"</span>',
       '',
-      '<span class="kw">const</span> '+varN+' = <span class="fn">hallucinate</span>({',
+      '<span class="kw">const</span> '+varN+' = <span class="fn">createApp</span>({',
       '  name: <span class="str">"'+name+'"</span>,',
-      '  mood: <span class="str">"'+pick(['自信','过度自信','一本正经','灵光乍现','梦游'])+'"</span>,',
-      '  seed: <span class="num">'+randInt(100000,999999)+'</span>,',
-      '  style: <span class="str">"'+col+'"</span>',
+      '  theme: <span class="str">"'+pick(['light','dark','auto'])+'"</span>,',
+      '  version: <span class="str">"'+randInt(1,9)+'.'+randInt(0,9)+'.'+randInt(0,9)+'"</span>,',
+      '  color: <span class="str">"'+col+'"</span>',
       '})',
       '',
       '<span class="kw">function</span> <span class="fn">'+comp+'</span>() {',
-      '  <span class="kw">const</span> data = '+varN+'.<span class="fn">generate</span>()',
-      '  <span class="kw">return</span> <span class="str">&lt;Layout theme="dark"&gt;</span>',
+      '  <span class="kw">const</span> data = '+varN+'.<span class="fn">load</span>()',
+      '  <span class="kw">return</span> <span class="str">&lt;Layout theme={data.theme}&gt;</span>',
       '    <span class="str">&lt;Header title={data.title} /&gt;</span>',
       '    <span class="str">&lt;Body {...data.content} /&gt;</span>',
       '    <span class="str">&lt;/Layout&gt;</span>',
       '}',
       '',
       '<span class="fn">render</span>(<'+comp+' />)',
-      '<span class="cm">// ✓ 编译通过 · 已注入沙箱 iframe</span>',
-      '<span class="cm">// ⚠ 本代码仅存在于此刻，关闭即蒸发</span>'
+      '<span class="cm">// ✓ 编译通过 · 正在安装到设备</span>'
     ];
   }
 
@@ -64,7 +64,8 @@
         terminal.scrollTop=terminal.scrollHeight;
         i++;
         bar.style.width=Math.round(i/total*100)+'%';
-        stat.textContent=randInt(980,1480)+' tokens/s';
+        stat.textContent='正在编译 '+Math.round(i/total*100)+'%';
+        if(sourceEl)sourceEl.textContent='正在准备应用数据…';
         setTimeout(tick,randInt(55,110));
       };
       tick();
@@ -84,20 +85,24 @@
     genLayer.hidden=false;
     appLayer.hidden=true;
 
-    // 并行：动画 + LLM 现场编内容（失败自动降级为本地幻觉）
+    // 并行：动画 + 在线生成内容（失败自动降级为本地数据）
+    if(sourceEl)sourceEl.textContent='正在连接网络…';
     const llmPromise = window.LLM ? window.LLM.fetchHallucination(id,name) : Promise.resolve(null);
     await printCode(name,id);
     let llmData = null;
     try{ llmData = await llmPromise; }catch(e){ llmData=null; }
-    // 追加 LLM 状态行
+    // 追加内容来源状态行
     const d=document.createElement('div');
     d.className='ln';
+    const usedSrc=window.__LLM_SOURCE||'';
     d.innerHTML = llmData
-      ? '<span class="str">// ✓ Pollinations LLM 已现场编好内容并注入</span>'
-      : '<span class="cm">// ↻ LLM 繁忙，已用本地幻觉词库兜底</span>';
+      ? '<span class="str">// ✓ 内容来源：'+usedSrc+'</span>'
+      : '<span class="cm">// 网络暂不可用，已载入本地内容</span>';
     terminal.appendChild(d);
     terminal.scrollTop=terminal.scrollHeight;
     bar.style.width='100%';
+    stat.textContent='安装准备就绪';
+    if(sourceEl)sourceEl.textContent=llmData?('已连接 · '+usedSrc):'离线模式';
     await new Promise(r=>setTimeout(r,220));
 
     // 现场生成 HTML（永不缓存）
