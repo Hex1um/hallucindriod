@@ -23,7 +23,7 @@
     notes:   n=>`编一条中文便签。格式：{"text":"便签正文，35字内","mood":"一个emoji","sign":"署名地点"}。主题：${n}`,
     store:   n=>`编3个中文App。格式：{"apps":[{"name":"App名","desc":"一句介绍，20字内","emoji":"一个emoji"}]}。主题：${n}`,
     browser: n=>`用户想打开「${n}」。先判断它是什么网站（社交/视频/购物/资讯/工具/企业等），据此设计一个符合该定位的中文网页首页。只输出纯JSON，字段齐全：{"siteName":"品牌名2-6字","type":"类型，只能是 social/video/shop/news/tool/official 之一","tagline":"标语8字内","heroTitle":"大标题14字内","heroSub":"副标题26字内","cta":"按钮4字内","aboutTitle":"板块标题","about":"一段介绍50字内","features":[{"icon":"emoji","title":"4-6字","desc":"18字内"}],"stats":[{"num":"120万","label":"用户"},{"num":"4.9分","label":"评分"},{"num":"98%","label":"好评"}]}`,
-    websearch:n=>`模拟搜索引擎对「${n}」的搜索结果。只输出纯JSON：{"query":"${n}","total":"约 1,240,000 条结果","results":[{"title":"结果标题，18字内","site":"域名如 zhihu.com","url":"完整网址","snippet":"摘要，40字内"}]}。生成7条可信的中文结果，覆盖不同网站。`,
+    websearch:n=>`模拟搜索引擎对「${n}」的搜索结果。只输出纯JSON：{"query":"${n}","total":"约 1,240,000 条结果","results":[{"title":"结果标题，18字内","site":"域名如 zhihu.com","url":"完整网址","snippet":"摘要，40字内"}]}。生成5条可信的中文结果，覆盖不同网站。`,
     messages:n=>`为一个手机社交App生成消息页。格式：{"me":"我的昵称","status":"在线状态","subs":[{"name":"订阅号名","avatar":"一个emoji"}],"chats":[{"name":"昵称","preview":"最新动态，24字内","time":"刚刚","unread":数字0-99,"muted":false,"avatar":"一个emoji","badge":"Lv8","fire":数字0-99}]}。生成4个订阅号、6条消息，主题：${n}`,
     album:   n=>`编4张照片标题。格式：{"photos":[{"title":"照片标题，8字内","emoji":"一个emoji"}]}。主题：${n}`,
     fish:    n=>`编一个摸鱼检测结果。格式：{"verdict":"一句摸鱼结论，20字内","advice":"一句建议，15字内"}。主题：${n}`,
@@ -173,13 +173,14 @@
     const isBrowser=id==='browser';
     const isTerminal=id==='terminal';
     // browser 生成完整官网 JSON 偏慢，但已精简字段；给 18s 窗口，超时再走备用源
-    const heavy=isBrowser?600:((id==='delivery'||id==='video'||id==='messages')?650:400);
+    const isWeb=(isBrowser||id==='websearch');
+    const heavy=isWeb?650:((id==='delivery'||id==='video'||id==='messages')?650:400);
     const ctx={sys:systemPrompt(conf,id),user:buildUserPrompt(id,name),temp:temperature(conf,id),maxTokens:heavy};
     // browser 要生成完整官网 JSON（约 15s），给足竞速窗口；
     // terminal 只是短 JSON 意图解析，给短窗口保证快速响应；其他应用保持默认
     const isChat=(id==='friend'||id==='chatreply');
-    const fastWin=isBrowser?16000:((isTerminal||isChat)?6500:RACE_FAST);
-    const backupWin=isBrowser?20000:((isTerminal||isChat)?7000:RACE_BACKUP);
+    const fastWin=isWeb?16000:((isTerminal||isChat)?6500:RACE_FAST);
+    const backupWin=isWeb?20000:((isTerminal||isChat)?7000:RACE_BACKUP);
     window.__LLM_SOURCE='';
     window.__LLM_DIAG=[];
 
