@@ -162,7 +162,11 @@
   async function fetchHallucination(id,name){
     const cfg=D.CONFIG;
     const conf=Math.max(0,Math.min(1,Number(cfg.confidence)));
-    const ctx={sys:systemPrompt(conf),user:buildUserPrompt(id,name),temp:temperature(conf),maxTokens:id==='browser'?900:400};
+    const isBrowser=id==='browser';
+    const ctx={sys:systemPrompt(conf),user:buildUserPrompt(id,name),temp:temperature(conf),maxTokens:isBrowser?900:400};
+    // browser 要生成完整官网 JSON（约 15s），给足竞速窗口；其他应用保持快速
+    const fastWin=isBrowser?22000:RACE_FAST;
+    const backupWin=isBrowser?26000:RACE_BACKUP;
     window.__LLM_SOURCE='';
     window.__LLM_DIAG=[];
 
@@ -174,12 +178,12 @@
     }
 
     // 2) 阶段一：Pollinations 双模型竞速（快的胜出，慢的被 abort）
-    let r=await race([SOURCES.plFast,SOURCES.plStd],ctx,RACE_FAST);
+    let r=await race([SOURCES.plFast,SOURCES.plStd],ctx,fastWin);
     if(r){window.__LLM_SOURCE=r.source;return r.data}
     window.__LLM_DIAG.push('Pollinations 超时/失败');
 
     // 3) 阶段二：换源——文本端点（换路径）+ AI Horde（换服务），给足轮询时间
-    r=await race([SOURCES.plText,SOURCES.horde],ctx,RACE_BACKUP);
+    r=await race([SOURCES.plText,SOURCES.horde],ctx,backupWin);
     if(r){window.__LLM_SOURCE=r.source;return r.data}
     window.__LLM_DIAG.push('备用源均不可用');
 
