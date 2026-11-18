@@ -1,6 +1,12 @@
 /* ============ Hallucindriod · 幻卓 · 现编引擎 ============
  * openApp(): 打印代码瀑布 → 沙箱 iframe 现场渲染应用
- * 永不缓存：每次调用重新生成 HTML。
+ *
+ * 缓存策略（三步）：
+ *   1. dataCache —— 大模型返回的数据，按应用 id 缓存，命中即秒开
+ *   2. viewCache —— 上次渲染的完整文档，退出再进直接恢复，不重新初始化
+ *   3. webState  —— 浏览器上次访问的网页
+ *   主动再生：regen() / 设置里的「刷新数据」会清掉对应缓存并重新请求。
+ *   后台预热：warmup() 串行预取；prefetchRelated() 在打开应用后并行预取关联应用。
  */
 (function(){
   const D=window.OS_DATA;
@@ -353,6 +359,38 @@
   function persistSocial(){
     if(window.HOS&&window.HOS.saveSocial)window.HOS.saveSocial(window.__SOCIAL);
   }
+  let pendingProbe=null;
+  // 搜索用户：只探测资料，不写入好友列表
+  async function socialProbe(rawName){
+    const name=String(rawName||'').trim().slice(0,12);
+    if(!name)return;
+    const social=window.__SOCIAL||(window.__SOCIAL={profile:null,friends:[]});
+    const exist=(social.friends||[]).find(f=>f.name===name);
+    if(exist){ socialPush({type:'social:probed',exists:true,profile:exist}); return; }
+    let friend=null;
+    if(window.P2P&&window.P2P.findUser){
+      try{ friend=await window.P2P.findUser(name); }catch(e){ friend=null; }
+    }
+    if(!friend){
+      let d=null;
+      if(window.LLM){ try{ d=await window.LLM.fetchHallucination('friend',name); }catch(e){ d=null; } }
+      friend={
+        name:name,
+        avatar:(d&&d.avatar)||pick(['🐱','🌙','🐷','🦊','🎧','🌟','🍀']),
+        level:(d&&d.level)||('Lv'+randInt(1,9)),
+        bio:(d&&d.bio)||'这个人很神秘，什么都没留下',
+        isAI:true,
+        msgs:[{me:false,text:(d&&d.greeting)||('你好，我是'+name),ts:Date.now()}]
+      };
+    }else{
+      friend.isAI=false;
+      if(!friend.bio)friend.bio='真人好友 · 当前在线';
+      if(!Array.isArray(friend.msgs))friend.msgs=[];
+    }
+    pendingProbe=friend;
+    socialPush({type:'social:probed',exists:false,profile:friend});
+  }
+
   async function socialAddFriend(rawName){
     const name=String(rawName||'').trim().slice(0,12);
     if(!name)return;
@@ -360,9 +398,13 @@
     if(!Array.isArray(social.friends))social.friends=[];
     const exist=social.friends.find(f=>f.name===name);
     if(exist){ socialPush({type:'social:friend',friend:exist,exists:true}); return; }
-    // 1) 先尝试找真人（WebRTC P2P）
+    // 搜索时已经探测过 → 直接复用，避免二次请求
     let friend=null;
-    if(window.P2P&&window.P2P.findUser){
+    if(pendingProbe && pendingProbe.name===name){
+      friend=pendingProbe; pendingProbe=null;
+    }
+    // 1) 没有预览结果时才找真人（WebRTC P2P）
+    if(!friend && window.P2P && window.P2P.findUser){
       try{ friend=await window.P2P.findUser(name); }catch(e){ friend=null; }
     }
     // 2) 真人不存在 → LLM 生成一个人设账户（保证一定搜得到）
@@ -377,31 +419,43 @@
         isAI:true,
         msgs:[{me:false,text:(d&&d.greeting)||('你好，我是'+name),ts:Date.now()}]
       };
-    } else {
-      friend.isAI=false;
-      if(!Array.isArray(friend.msgs))friend.msgs=[];
     }
+    // 真人好友补齐字段（isAI 由 findUser 返回，不要在这里改成 false）
+    if(!Array.isArray(friend.msgs))friend.msgs=[];
     social.friends.unshift(friend);
     persistSocial();
     socialPush({type:'social:friend',friend:friend,exists:false});
   }
   async function socialReply(friendName,text){
-    // 真人好友：直接走 P2P 发出（对方在线才发得出去）
     const social=window.__SOCIAL||{friends:[]};
     const f=(social.friends||[]).find(x=>x.name===friendName);
-    if(f && !f.isAI && f.peerId && window.P2P && window.P2P.send(f.peerId,{t:'msg',text:text,ts:Date.now()})){
+    if(!f)return;
+    // 真人好友：直接走 P2P 发出（对方在线才发得出去）
+    if(!f.isAI && !f.isGroup && f.peerId && window.P2P && window.P2P.send(f.peerId,{t:'msg',text:text,ts:Date.now()})){
       return;
+    }
+    // 群聊：随机挑一位成员来回答
+    let speaker=friendName, persona=f.bio||'';
+    if(f.isGroup && Array.isArray(f.members) && f.members.length){
+      speaker=pick(f.members);
+      persona='群成员';
     }
     let reply='';
     if(window.LLM){
-      const ctx=JSON.stringify({me:(social.profile&&social.profile.name)||'我',other:friendName,say:text});
+      const ctx=JSON.stringify({
+        me:(social.profile&&social.profile.name)||'我',
+        other:speaker,
+        persona:persona,
+        group:f.isGroup?friendName:'',
+        say:text
+      });
       try{
         const d=await window.LLM.fetchHallucination('chatreply',ctx);
         if(d&&d.reply)reply=String(d.reply);
       }catch(e){}
     }
     if(!reply)reply=pick(['在的','哈哈哈哈','确实','让我想想','你说得对','嗯嗯，然后呢','这个我也有同感','稍等，我看一下']);
-    socialPush({type:'social:reply',friend:friendName,text:reply});
+    socialPush({type:'social:reply',friend:friendName,text:(f.isGroup?speaker+'：':'')+reply});
   }
 
   // 收到真人消息 → 写进好友会话并推给界面
@@ -463,6 +517,7 @@
       if(window.P2P){ window.P2P.init(nm).catch(()=>{}); }
       socialPush({type:'social:profile',profile:social.profile,friends:social.friends,p2p:window.P2P?window.P2P.status():null});
     }
+    else if(e.data.type==='social:probe')socialProbe(e.data.name);
     else if(e.data.type==='social:addfriend')socialAddFriend(e.data.name);
     else if(e.data.type==='social:reply')socialReply(String(e.data.friend||''),String(e.data.text||''));
     else if(e.data.type==='tone'){

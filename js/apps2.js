@@ -486,7 +486,7 @@
     const init = JSON.stringify({profile:social.profile||null,friends:Array.isArray(social.friends)?social.friends:[]}).replace(/</g,'\\u003c');
 
     const css =
-      '.qq{min-height:100%;display:flex;flex-direction:column;background:#0f1115;position:relative}'
+      '.qq{height:100%;display:flex;flex-direction:column;background:#0f1115;position:relative;overflow:hidden}'
       +'.qhead{display:flex;align-items:center;gap:11px;padding:14px 52px 4px 14px}'
       +'.qava{width:42px;height:42px;border-radius:50%;background:linear-gradient(135deg,#22c55e,#15803d);display:flex;align-items:center;justify-content:center;font-size:19px;font-weight:700;color:#fff;flex-shrink:0;position:relative}'
       +'.qava .on{position:absolute;right:-1px;bottom:-1px;width:12px;height:12px;border-radius:50%;background:#22c55e;border:2.5px solid #0f1115}'
@@ -497,7 +497,7 @@
       +'.qsearch{margin:12px 14px 4px;background:rgba(255,255,255,.07);border-radius:11px;padding:10px;font-size:12.5px;color:#6f7488;text-align:center;cursor:pointer}'
       +'.qwin{display:flex;align-items:center;gap:9px;padding:12px 15px;color:#8b90a5;font-size:12px;cursor:pointer}'
       +'.qwin .ar{margin-left:auto;color:#4b5060;font-size:14px}'
-      +'.qlist{flex:1}'
+      +'.qlist{flex:1;min-height:0;overflow-y:auto;scrollbar-width:none}.qlist::-webkit-scrollbar{display:none}'
       +'.qrow{display:flex;align-items:center;gap:12px;padding:11px 15px;cursor:pointer}'
       +'.qrow:active{background:rgba(255,255,255,.05)}'
       +'.ra{width:50px;height:50px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0}'
@@ -532,6 +532,26 @@
       +'.qt3 .ti{display:block;font-size:20px;margin-bottom:1px;line-height:1.2}'
       +'.qt3.on{color:#3b82f6;font-weight:600}'
       +'.qt3 .n{position:absolute;top:-2px;left:calc(50% + 9px);background:#f23030;color:#fff;border-radius:999px;font-size:9px;padding:1px 4px;line-height:1.3}'
+      +'.pcard{display:flex;gap:12px;align-items:center;background:rgba(255,255,255,.055);border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:14px;margin-top:6px;text-align:left}'
+      +'.pav{width:52px;height:52px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:25px;flex-shrink:0}'
+      +'.pinfo{flex:1;min-width:0}'
+      +'.pinfo b{display:block;font-size:14.5px}'
+      +'.pinfo .pbio{font-size:11.5px;color:#9aa0b5;line-height:1.55;margin-top:4px}'
+      +'.pinfo .ptag{display:inline-block;font-size:9.5px;color:#3b82f6;background:rgba(59,130,246,.14);border-radius:4px;padding:1px 6px;margin-top:6px}'
+      +'.pbtns{display:flex;gap:9px;margin-top:14px}'
+      +'.pbtns button{flex:1;border:none;border-radius:12px;padding:12px;font-size:13px;cursor:pointer;font-weight:600}'
+      +'.pbtns .pno{background:rgba(255,255,255,.08);color:#c9cad6}'
+      +'.pbtns .pyes{background:#3b82f6;color:#fff}'
+      +'.pbtns button:disabled{opacity:.6}'
+      +'.mmenu{position:absolute;right:14px;top:54px;background:#1b1e26;border:1px solid rgba(255,255,255,.1);border-radius:12px;padding:6px;z-index:30;min-width:132px;box-shadow:0 12px 30px rgba(0,0,0,.5)}'
+      +'.mmenu div{padding:11px 14px;font-size:13px;color:#e6e7ee;border-radius:8px;cursor:pointer}'
+      +'.mmenu div:active{background:rgba(255,255,255,.08)}'
+      +'.mmenu .danger{color:#f87171}'
+      +'.gsel{display:flex;align-items:center;gap:10px;padding:11px 2px;border-bottom:1px solid rgba(255,255,255,.05)}'
+      +'.gsel .ck{width:22px;height:22px;border-radius:50%;border:1.5px solid #4b5060;display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0}'
+      +'.gsel.on .ck{background:#3b82f6;border-color:#3b82f6;color:#fff}'
+      +'.gsel .gav{width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}'
+      +'.gsel .gn{flex:1;font-size:13px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}'
       +'.qtop{display:flex;align-items:center;gap:15px;padding:11px 14px 4px}'
       +'.qtop .ic{font-size:19px;color:#d5d7e0;line-height:1;cursor:pointer;flex-shrink:0}'
       +'.qtop .ic:active{opacity:.55}'
@@ -648,7 +668,23 @@ function renderMain(){
       +'<div class="qt3" data-t="contact"><span class="ti">👤</span>联系人</div>'
       +'<div class="qt3" data-t="feed"><span class="ti">🔄</span>动态</div>'
     +'</div></div>';
-  document.getElementById('qplus').onclick=openAdd;
+  document.getElementById('qplus').onclick=function(ev){
+    ev.stopPropagation();
+    var old=document.querySelector('.mmenu');
+    if(old){old.parentNode.removeChild(old);return}
+    var m=document.createElement('div');
+    m.className='mmenu';
+    m.innerHTML='<div data-a="add">加好友</div><div data-a="group">建群</div>';
+    app.appendChild(m);
+    m.querySelectorAll('div').forEach(function(x){
+      x.onclick=function(ev2){
+        ev2.stopPropagation();
+        m.parentNode.removeChild(m);
+        if(this.getAttribute('data-a')==='add')openAdd();else openGroup();
+      };
+    });
+    setTimeout(function(){document.addEventListener('click',function h(){var q=document.querySelector('.mmenu');if(q)q.parentNode.removeChild(q);document.removeEventListener('click',h)})},10);
+  };
   document.getElementById('qsearch').onclick=openAdd;
   var af=document.getElementById('addFirst'); if(af)af.onclick=openAdd;
   app.querySelectorAll('.qrow').forEach(function(r){r.onclick=function(){openChat(Number(this.getAttribute('data-i')))}});
@@ -663,21 +699,107 @@ function renderMain(){
 function openAdd(){
   ov.innerHTML='<div class="ovh"><button id="ovbk">‹</button><b>添加好友</b></div>'
     +'<div class="addbox"><h3>通过用户名查找</h3>'
-    +'<p>输入对方的用户名。若该用户真实存在，你会添加到他本人；<br>否则会为你生成一个专属聊天对象。</p>'
+    +'<p>先看看对方是谁，再决定要不要加。</p>'
     +'<input id="addName" placeholder="输入用户名" maxlength="12" autocomplete="off">'
-    +'<button id="addGo">搜索并添加</button>'
+    +'<button id="addGo">搜索</button>'
     +'<div class="addres" id="addRes"></div></div>';
   ov.classList.add('on');
   document.getElementById('ovbk').onclick=function(){ov.classList.remove('on')};
+  document.getElementById('ovMore').onclick=function(ev){
+    ev.stopPropagation();
+    var old=document.querySelector('.mmenu'); if(old)old.parentNode.removeChild(old);
+    var m=document.createElement('div'); m.className='mmenu'; m.style.top='52px';
+    m.innerHTML='<div data-a="clear">清空聊天记录</div>'
+      +(f.isGroup?'<div class="danger" data-a="quit">退出群聊</div>':'<div class="danger" data-a="del">删除好友</div>');
+    ov.appendChild(m);
+    m.querySelectorAll('div').forEach(function(x){
+      x.onclick=function(e2){
+        e2.stopPropagation();
+        var a=this.getAttribute('data-a');
+        m.parentNode.removeChild(m);
+        if(a==='clear'){ f.msgs=[]; saveFriends(); openChat(S.friends.indexOf(f)); }
+        else{ if(!confirm(a==='del'?'删除好友「'+f.name+'」？':'退出群聊「'+f.name+'」？'))return;
+          S.friends=S.friends.filter(function(y){return y!==f}); saveFriends(); ov.classList.remove('on'); render(); }
+      };
+    });
+  };
   var inp=document.getElementById('addName'),go=document.getElementById('addGo'),res=document.getElementById('addRes');
+  window.__probeName=null;
   function submit(){
     var n=(inp.value||'').trim();
     if(n.length<1){toast('请输入用户名');return}
-    res.textContent='正在搜索「'+n+'」…';go.disabled=true;
-    parent.postMessage({type:'social:addfriend',name:n},'*');
+    window.__probeName=n;
+    res.innerHTML='<div style="padding:14px 0;text-align:center;color:#8b90a5;font-size:12px">正在搜索「'+esc(n)+'」…</div>';
+    go.disabled=true;
+    parent.postMessage({type:'social:probe',name:n},'*');
   }
   go.onclick=submit;
   inp.onkeydown=function(e){if(e.key==='Enter')submit()};
+}
+function renderProbe(p,exists){
+  var res=document.getElementById('addRes');
+  if(!res)return;
+  var av=esc(p.avatar||'👤');
+  var bio=esc(p.bio||'这个人很神秘，什么都没留下');
+  var tag=exists?'已在好友列表':(p.isAI?'AI 生成的聊天对象':'真人 · 当前在线');
+  res.innerHTML='<div class="pcard"><div class="pav" style="background:'+GRADS[(p.name||'u').length%GRADS.length]+'">'+av+'</div>'
+    +'<div class="pinfo"><b>'+esc(p.name||'')+'</b>'
+    +'<div class="pbio">'+bio+'</div><span class="ptag">'+tag+'</span></div></div>'
+    +'<div class="pbtns"><button class="pno" id="pCancel">取消</button>'
+    +'<button class="pyes" id="pAdd">'+(exists?'发消息':'加好友')+'</button></div>';
+  var go=document.getElementById('addGo'); if(go)go.disabled=false;
+  document.getElementById('pCancel').onclick=function(){res.innerHTML=''};
+  document.getElementById('pAdd').onclick=function(){
+    var btn=this;btn.disabled=true;btn.textContent='添加中…';
+    parent.postMessage({type:'social:addfriend',name:p.name,useProbe:true},'*');
+  };
+}
+function openGroup(){
+  var f=S.friends||[];
+  if(f.length<2){ toast('至少需要 2 位好友才能建群'); return }
+  var sel={};
+  ov.innerHTML='<div class="ovh"><button id="ovbk">‹</button><b>发起群聊</b>'
+    +'<button id="gCreate" style="margin-left:auto;font-size:13px;color:#3b82f6;font-weight:600">创建</button></div>'
+    +'<div style="padding:14px 16px 6px"><input id="gName" placeholder="群名称（可留空）" maxlength="12" autocomplete="off" style="width:100%;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);border-radius:12px;padding:12px 14px;color:#fff;font-size:13px;outline:none"></div>'
+    +'<div style="padding:4px 16px 20px" id="gList"></div>';
+  ov.classList.add('on');
+  document.getElementById('ovbk').onclick=function(){ov.classList.remove('on')};
+  var list=document.getElementById('gList');
+  list.innerHTML=f.map(function(x,i){
+    return '<div class="gsel" data-i="'+i+'"><div class="ck"></div>'
+      +'<div class="gav" style="background:'+GRADS[i%GRADS.length]+'">'+esc(x.avatar||'👤')+'</div>'
+      +'<div class="gn">'+esc(x.name)+'</div></div>';
+  }).join('');
+  list.querySelectorAll('.gsel').forEach(function(el){
+    el.onclick=function(){
+      var i=this.getAttribute('data-i');
+      if(sel[i]){ delete sel[i]; this.classList.remove('on'); this.querySelector('.ck').textContent='' }
+      else{ sel[i]=true; this.classList.add('on'); this.querySelector('.ck').textContent='✓' }
+    };
+  });
+  document.getElementById('gCreate').onclick=function(){
+    var ids=Object.keys(sel);
+    if(ids.length<2){ toast('至少选择 2 位好友'); return }
+    var members=ids.map(function(i){ return f[Number(i)] });
+    var nm=(document.getElementById('gName').value||'').trim()||(members.map(function(m){return m.name}).slice(0,3).join('、')+'…');
+    var group={
+      name:nm,
+      avatar:'👥',
+      isGroup:true,
+      members:members.map(function(m){return m.name}),
+      level:'群聊',
+      bio:members.length+' 位成员',
+      msgs:[{me:false,text:'「'+nm+'」已创建，来打个招呼吧',ts:Date.now()}],
+      ts:Date.now(),
+      unread:0
+    };
+    S.friends=S.friends||[];
+    S.friends.unshift(group);
+    saveFriends();
+    ov.classList.remove('on');
+    render();
+    toast('群聊已创建');
+  };
 }
 function openSheet(title,inner){
   ov.innerHTML='<div class="ovh"><button id="ovbk">‹</button><b>'+esc(title)+'</b></div><div class="ovb"><div style="font-size:12.5px;color:#c9cad6;line-height:1.9">'+inner+'</div></div>';
@@ -690,7 +812,9 @@ function openChat(i){
   var msgs=(f.msgs||[]).map(function(m){
     return '<div class="bb '+(m.me?'me':'them')+'">'+esc(m.text)+'</div>';
   }).join('');
-  ov.innerHTML='<div class="ovh"><button id="ovbk">‹</button><b>'+esc(f.name)+'</b><span class="st">'+(f.isAI?'在线':'好友')+'</span></div>'
+  ov.innerHTML='<div class="ovh"><button id="ovbk">‹</button><b>'+esc(f.name)+'</b>'
+    +'<span class="st">'+(f.isGroup?'群聊':(f.isAI?'在线':'好友'))+'</span>'
+    +'<button id="ovMore" style="margin-left:auto;font-size:20px;color:#8b90a5">⋯</button></div>'
     +'<div class="ovb" id="ovb">'+(msgs||'<div style="text-align:center;color:#6b7080;font-size:11.5px;padding:30px">开始聊天吧</div>')+'</div>'
     +'<div class="ovin"><input id="ovi" placeholder="发消息…"><button id="ovs">发送</button></div>';
   ov.classList.add('on');
@@ -716,6 +840,10 @@ function saveFriends(){
 window.addEventListener('message',function(e){
   var d=e.data; if(!d||!d.type)return;
   if(d.type==='social:profile'){ S.profile=d.profile; S.friends=d.friends||[]; render(); return }
+  if(d.type==='social:probed'){
+    renderProbe(d.profile||{}, !!d.exists);
+    return;
+  }
   if(d.type==='social:friend'){
     S.friends=S.friends||[];
     if(!S.friends.some(function(x){return x.name===d.friend.name})){ S.friends.unshift(d.friend); }

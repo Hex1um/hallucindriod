@@ -13,6 +13,9 @@
   const D=window.OS_DATA;
 
   // 竞速窗口：谁先在窗口内返回有效 JSON 就用谁；超时即切换下一个源
+  // 本地开发：Pollinations 对 localhost 会触发人机验证，可用 dev-proxy.mjs 转发
+  const IS_LOCAL=(typeof location!=='undefined')&&/^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname||'');
+  const LLM_BASE=IS_LOCAL?'http://localhost:8787/api':'https://text.pollinations.ai';
   const RACE_FAST=9000;    // 阶段一（Pollinations 双模型）
   const RACE_BACKUP=18000; // 阶段二（文本端点 / AI Horde 轮询）
   const RACE_CUSTOM=12000; // 自定义端点
@@ -39,7 +42,7 @@
     video:   n=>`为一个视频App生成推荐列表。格式：{"videos":[{"title":"视频标题22字内","up":"UP主名","views":"播放量如 1.3万","danmaku":"弹幕数如 3","dur":"时长如 1:06","cover":"一个emoji","hot":true或false}]}。生成6条视频，主题：${n}`,
     terminal:n=>`你是手机智能助手。用户指令：「${n}」。把指令解析成可执行动作，只输出纯JSON：{"reply":"对用户的自然语言回应，16字内","actions":[{"type":"动作类型","target":"目标值","label":"动作简述，8字内"}]}。可用动作：openApp(打开应用,target填应用名如 天气/相机/音乐/地图/浏览器/短信/电话/设置/应用商店)、closeApp(关闭当前应用)、toast(显示提示,target填提示文字)、toggle(开关,target填 wifi/蓝牙/手电筒/飞行模式/勿扰)、call(拨号,target填号码或联系人)、message(发短信,target填联系人)、browse(打开网页,target填主题或网址)、searchApp(应用商店搜索,target填关键词)。最多3个动作。`,
     friend:  n=>`为一个网名叫「${n}」的聊天好友生成人设。格式：{"avatar":"一个emoji","level":"Lv数字","bio":"个性签名，16字内","greeting":"主动打招呼的一句话，20字内"}。只输出JSON。`,
-    chatreply:n=>`你在扮演一个聊天对象。根据下面的上下文用一句自然口语回复（20字内，口语化）。上下文：${n}。只输出JSON：{"reply":"你的回复"}`,
+    chatreply:n=>`你在扮演一个聊天对象，和用户闲聊。上下文：${n}。规则：1)用一句自然口语回复，20字内；2)若 persona 字段描述了这个人的身份/性格，请贴合它说话；3)若 group 字段非空，说明这是群聊，语气可以更随意；4)不要复述对方的原话。只输出JSON：{"reply":"你的回复"}`,
     calculator:n=>`为AI计算器生成两句话。格式：{"sign":"AI助手签名，8字内","tip":"算错结果时的吐槽，18字内"}。主题：${n}`
   };
 
@@ -57,15 +60,70 @@
     if(id==='__generic__'||!SCHEMA[id]) return '用户想要一个叫「'+name+'」的手机App。只输出纯JSON：{"tagline":"贴合这个应用的宣传语，20字内","features":["贴合该应用的具体能力","另一项具体能力","第三项具体能力"]}。要求：features 必须是和「'+name+'」相关的具体能力短语，禁止出现"功能1""功能2"这类占位文字。';
     return SCHEMA[id](name);
   }
+  // 容错修复：去掉尾随逗号、补齐被截断的引号与括号（免费源经常在末尾断掉）
+  function repairJSON(src){
+    const s=String(src);
+    // 记录所有可能的安全切点（字符串外的 , { [）
+    const cuts=[];
+    let inStr=false,esc=false;
+    for(let i=0;i<s.length;i++){
+      const ch=s[i];
+      if(inStr){
+        if(esc)esc=false;
+        else if(ch==='\\')esc=true;
+        else if(ch==='"')inStr=false;
+        continue;
+      }
+      if(ch==='"'){inStr=true;continue}
+      if(ch===','||ch==='{'||ch==='[')cuts.push(i);
+    }
+    cuts.push(s.length);
+    // 从最长的可解析前缀往前退
+    for(let k=cuts.length-1;k>=0;k--){
+      let t=s.slice(0,cuts[k]).replace(/[,\s]+$/,'');
+      if(!t)continue;
+      let ob=0,abr=0,st=false,es=false,bad=false;
+      for(let i=0;i<t.length;i++){
+        const ch=t[i];
+        if(st){
+          if(es)es=false;
+          else if(ch==='\\')es=true;
+          else if(ch==='"')st=false;
+          continue;
+        }
+        if(ch==='"'){st=true}
+        else if(ch==='{')ob++;
+        else if(ch==='}'){ob--;if(ob<0){bad=true;break}}
+        else if(ch==='[')abr++;
+        else if(ch===']'){abr--;if(abr<0){bad=true;break}}
+      }
+      if(bad||st||ob<0||abr<0)continue;
+      let fixed=t;
+      while(abr-->0)fixed+=']';
+      while(ob-->0)fixed+='}';
+      fixed=fixed.replace(/,\s*([}\]])/g,'$1');
+      try{ JSON.parse(fixed); return fixed }catch(e){ continue }
+    }
+    return null;
+  }
+
   function extractJSON(text){
     if(!text)return null;
     let s=String(text).trim();
     const fence=s.match(/```(?:json)?\s*([\s\S]*?)```/i);
     if(fence)s=fence[1].trim();
-    const a=s.indexOf('{'),b=s.lastIndexOf('}');
-    if(a<0||b<a)return null;
-    s=s.slice(a,b+1);
-    try{return JSON.parse(s)}catch(e){return null}
+    const a=s.indexOf('{');
+    if(a<0)return null;
+    let body=s.slice(a);
+    // 先按最后一个 } 截取（有完整结尾时最快）
+    const b=body.lastIndexOf('}');
+    if(b>0){
+      try{ return JSON.parse(body.slice(0,b+1)) }catch(e){}
+    }
+    // 失败则容错修复后再试
+    const fixed=repairJSON(body);
+    if(fixed){ try{ return JSON.parse(fixed) }catch(e){} }
+    return null;
   }
 
   // ---------- 各数据源实现：统一签名 (ctx, signal) => Promise<data|null> ----------
@@ -73,7 +131,7 @@
 
   // Pollinations OpenAI 兼容端点（CORS:*，免 Key）
   async function plChat(model,ctx,signal){
-    const r=await fetch('https://text.pollinations.ai/openai',{
+    const r=await fetch(LLM_BASE+'/openai',{
       method:'POST',signal,headers:{'Content-Type':'application/json'},
       body:JSON.stringify({model,messages:messagesOf(ctx),temperature:ctx.temp,max_tokens:ctx.maxTokens||400})
     });
@@ -85,7 +143,7 @@
   // Pollinations 纯文本端点（另一条路径，兜底）
   async function plText(ctx,signal){
     const prompt=ctx.sys+'\n\n'+ctx.user;
-    const r=await fetch('https://text.pollinations.ai/'+encodeURIComponent(prompt)+'?model=openai-fast',{signal});
+    const r=await fetch(LLM_BASE+'/'+encodeURIComponent(prompt)+'?model=openai-fast',{signal});
     if(!r.ok)return null;
     return extractJSON(await r.text());
   }

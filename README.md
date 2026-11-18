@@ -44,7 +44,16 @@
 python -m http.server 8080
 ```
 
-打开 <http://localhost:8080> 即可（建议用线上地址体验完整 AI 能力，见文末）。
+打开 <http://localhost:8080> 即可。
+
+> 本地调试注意：Pollinations 对 `localhost` 来源会触发人机验证，直连往往失败。
+> 仓库带了一个 30 行的反向代理：
+
+```bash
+node dev-proxy.mjs      # 另开一个终端，监听 8787
+```
+
+页面检测到 `localhost` 会自动把 LLM 请求指向 `http://localhost:8787/api`，线上地址不受影响。
 
 ## 结构
 
@@ -54,10 +63,20 @@ css/style.css     样式（拟真图标、不透明锁屏、三键导航）
 js/data.js        应用注册表（SVG 拟真图标）、Dock、文件夹、词库、农历
 js/apps.js        应用生成器（一）
 js/apps2.js       应用生成器（二）
-js/llm.js         LLM 层：多源竞速 + fallback
-js/engine.js      现编引擎
-js/main.js        主程序
+js/llm.js         LLM 层：多源竞速 + fallback + JSON 容错解析
+js/p2p.js         P2P 联机（PeerJS 信令 + WebRTC DataChannel）
+js/engine.js      现编引擎（数据缓存 / 视图快照 / 关联预取 / 社交与安装）
+js/main.js        主程序（桌面分页、图标、音频桥、社交与已安装存储）
+vendor/peerjs.min.js  PeerJS 运行时（按需加载）
+dev-proxy.mjs     本地开发用 LLM 反向代理
 ```
+
+### 缓存行为
+
+- `dataCache` 按应用缓存 LLM 数据，命中即秒开
+- `viewCache` 保存上次渲染的完整文档，退出再进直接恢复
+- `webState` 记住浏览器上次访问的网页
+- 主动再生：`ENGINE.regen()` 或设置里的「刷新数据」
 
 ## LLM 多源策略
 
