@@ -65,6 +65,28 @@
   function openControlCenter(){controlCenter.classList.add('open');closeDrawer()}
   function closeControlCenter(){controlCenter.classList.remove('open')}
 
+  // 供智能终端调用：按名称开关某个系统开关（可在后台生效，不必打开面板）
+  function setToggle(name, value){
+    const map={wifi:'移动数据',无线:'移动数据',无线网:'移动数据',数据:'移动数据',移动数据:'移动数据',数据网络:'移动数据',
+      蓝牙:'蓝牙',飞行:'飞行模式',飞行模式:'飞行模式',手电:'手电筒',手电筒:'手电筒',
+      勿扰:'勿扰模式',勿扰模式:'勿扰模式',旋转:'自动旋转',自动旋转:'自动旋转'};
+    const raw=String(name||'').trim();
+    const label=map[raw]||raw;
+    let tile=null;
+    document.querySelectorAll('.cc-tile').forEach(t=>{
+      const c=t.querySelector('.cct');
+      if(c&&c.textContent===label)tile=t;
+    });
+    if(!tile){ toast('未找到开关「'+label+'」'); return false; }
+    const on=tile.classList.contains('on');
+    const want=(typeof value==='boolean')?value:!on;
+    tile.classList.toggle('on',want);
+    toast(label+(want?'已开启':'已关闭'));
+    return true;
+  }
+  // 供智能终端调用：锁屏 / 解锁
+  function lockScreen(){lockscreen.classList.remove('hidden')}
+
   // ---------- Toast ----------
   let toastTimer;
   function toast(msg){
@@ -156,10 +178,20 @@
     toast,
     closePanels(){closeDrawer();closeControlCenter()},
     refreshIcons(){renderIcons()},
-    openDrawer,closeDrawer
+    openDrawer,closeDrawer,
+    openControlCenter,closeControlCenter,
+    setToggle,lockScreen
   };
 
   // ---------- 启动 ----------
   renderIcons();
+
+  // 空闲时后台预热所有应用数据：用户点开任意应用时通常已有缓存，无需久等
+  function scheduleWarmup(){
+    const run=()=>{ if(window.ENGINE&&window.ENGINE.warmup)window.ENGINE.warmup(false); };
+    if(window.requestIdleCallback)requestIdleCallback(run,{timeout:2500});
+    else setTimeout(run,1800);
+  }
+  setTimeout(scheduleWarmup,1500);
 
 })();

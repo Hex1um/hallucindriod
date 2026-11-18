@@ -15,16 +15,17 @@
     + '<style>'
     + ':root{--ac:'+accent+'}'
     + '*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}'
-    + 'html,body{margin:0;height:100%;font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;'
+    + 'html{height:100%}'
+    + 'body{margin:0;height:100vh;display:flex;flex-direction:column;font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;'
     + 'background:#101119;color:#f2f2f7;overflow:hidden}'
-    + '.abar{height:52px;padding:0 8px;display:flex;align-items:center;justify-content:space-between;'
+    + '.abar{flex:0 0 52px;height:52px;padding:0 8px;display:flex;align-items:center;justify-content:space-between;'
     + 'background:rgba(20,21,32,.9);border-bottom:1px solid rgba(255,255,255,.07);position:relative;z-index:2}'
     + '.ab-btn{border:none;background:none;color:var(--ac);font-size:14px;padding:8px 10px;cursor:pointer;min-width:52px}'
     + '.ab-btn:active{opacity:.5}'
     + '.ab-title{font-size:14px;font-weight:700;display:flex;align-items:center;gap:6px}'
-    + '.ab-badge{font-size:9.5px;color:#7c8096;text-align:center;padding:6px;letter-spacing:.2px;'
+    + '.ab-badge{flex:0 0 auto;font-size:9.5px;color:#7c8096;text-align:center;padding:6px;letter-spacing:.2px;'
     + 'background:rgba(167,139,250,.06);border-bottom:1px solid rgba(255,255,255,.05)}'
-    + '.ab-body{height:calc(100% - 82px);overflow-y:auto;scrollbar-width:none}'
+    + '.ab-body{flex:1;min-height:0;overflow-y:auto;scrollbar-width:none}'
     + '.ab-body::-webkit-scrollbar{display:none}'
     + '.card{background:rgba(255,255,255,.045);border:1px solid rgba(255,255,255,.07);border-radius:16px}'
     + '.muted{color:#8b90a5}'
@@ -33,7 +34,7 @@
     + '<div class="abar">'
     + '<button class="ab-btn" onclick="parent.postMessage({type:\'close\'},\'*\')">‹ 返回</button>'
     + '<div class="ab-title">'+(cfg.icon||'✦')+' '+(cfg.title||'应用')+'</div>'
-    + '<button class="ab-btn" style="text-align:right" onclick="parent.postMessage({type:\'regen\'},\'*\')">⟳ 刷新</button>'
+    + '<span class="ab-btn" style="text-align:right" aria-hidden="true"></span>'
     + '</div>'
     + '<div class="ab-badge">数据更新于刚刚 · 版本 1.0</div>'
     + '<div class="ab-body">'+(cfg.html||'')+'</div>'
@@ -46,6 +47,9 @@
   /* ---------- 计算器：能算，但自信地偶尔算错 ---------- */
   B.calculator = function(){
     const pal = neonPalette();
+    const L=(typeof window.__LLM!=='undefined'&&window.__LLM)?window.__LLM:null;
+    const sign = (L&&L.sign) || 'AI 计算引擎';
+    const tip = (L&&L.tip) || '结果由 AI 确信，可能略有偏差';
     const wrong = chance(.5);
     const js = `
       var disp=document.getElementById('disp'),expr='',done=false;
@@ -74,6 +78,8 @@
       title:'计算器', icon:'🧮', accent:pal.a,
       css:'.calc{height:100%;display:flex;flex-direction:column;padding:14px 18px 20px;gap:14px}'
         +'.scr{flex:0 0 auto;text-align:right;padding:16px 6px 10px}'
+        +'.sign{font-size:10px;color:#8b90a5;text-align:left;margin-bottom:10px;display:flex;align-items:center;gap:5px}'
+        +'.sign b{color:var(--ac);font-weight:600}'
         +'.scr #disp{font-size:44px;font-weight:200;font-variant-numeric:tabular-nums;word-break:break-all;line-height:1.15}'
         +'.warn{color:#fbbf24;font-size:11px;display:none;text-align:right;margin-top:4px}'
         +'.keys{flex:1;display:grid;grid-template-columns:repeat(4,1fr);grid-auto-rows:1fr;gap:11px;max-height:460px}'
@@ -81,7 +87,7 @@
         +'.k:active{transform:scale(.93);background:rgba(255,255,255,.15)}'
         +'.k.fun{background:rgba(167,139,250,.2);color:#c4b5fd}'
         +'.k.eq{background:var(--ac);color:#0b0b12;font-weight:700}',
-      html:'<div class="calc"><div class="scr"><div id="disp">0</div><div class="warn" id="warn">⚠ 结果由 AI 确信，可能略有偏差</div></div><div class="keys">'+keys+'</div></div>',
+      html:'<div class="calc"><div class="scr"><div class="sign">✦ <b>'+sign+'</b></div><div id="disp">0</div><div class="warn" id="warn">⚠ '+tip+'</div></div><div class="keys">'+keys+'</div></div>',
       js:js
     });
   };

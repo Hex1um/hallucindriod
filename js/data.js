@@ -31,6 +31,9 @@ const ICONS={
   phone: svgIcon(['#5ce36b','#128c3e'],'<g '+W+'><path d="M20 12l-6 3c-3 1.5-3 5-1 9 3 7 9 15 17 21 4 3 8 3 9 0l3-6-10-7-5 5c-5-3-9-7-12-12l5-5z"/></g>'),
   health: svgIcon(['#ff6b6b','#d32f2f'],'<g '+W+'><path d="M32 50S12 38 12 25a11 11 0 0 1 20-6 11 11 0 0 1 20 6c0 13-20 25-20 25z"/><path d="M18 32h8l3-7 4 14 3-7h10" fill="none" stroke="#d32f2f" stroke-width="2.6" stroke-linejoin="round"/></g>'),
   settings: svgIcon(['#9aa4b2','#4b5563'],'<g '+W+'><path d="M32 20a12 12 0 1 0 0 24 12 12 0 0 0 0-24zm0 8a4 4 0 1 1 0 8 4 4 0 0 1 0-8z"/><path d="M29 8h6l1 6 4 2 5-3 4 4-3 5 2 4 6 1v6l-6 1-2 4 3 5-4 4-5-3-4 2-1 6h-6l-1-6-4-2-5 3-4-4 3-5-2-4-6-1v-6l6-1 2-4-3-5 4-4 5 3 4-2z" opacity=".55"/></g>'),
+  terminal: svgIcon(['#8b5cf6','#5b21b6'],'<g '+W+'><path d="M18 16h28a7 7 0 0 1 7 7v13a7 7 0 0 1-7 7H32l-11 7v-7h-3a7 7 0 0 1-7-7V23a7 7 0 0 1 7-7z"/><path d="M32 23l2.4 6.6L41 32l-6.6 2.4L32 41l-2.4-6.6L23 32l6.6-2.4z" fill="#5b21b6"/></g>'),
+  delivery: svgIcon(['#fbbf24','#f59e0b'],'<g '+W+'><path d="M16 24h32l-3 26a4 4 0 0 1-4 4H23a4 4 0 0 1-4-4z"/><path d="M24 25v-6a8 8 0 0 1 16 0v6" fill="none" stroke="#fff" stroke-width="3.6"/><circle cx="26" cy="35" r="2.6" fill="#f59e0b"/><circle cx="38" cy="35" r="2.6" fill="#f59e0b"/><path d="M26 43h12" stroke="#f59e0b" stroke-width="3" stroke-linecap="round"/></g>'),
+  video: svgIcon(['#ff4d8d','#c026d3'],'<g '+W+'><rect x="11" y="12" width="42" height="40" rx="9"/><path d="M28 22l14 10-14 10z" fill="#c026d3"/></g>'),
 };
 
 // 内置应用（拟真图标 / 名称 / 品牌渐变 / 搜索关键词）
@@ -38,29 +41,24 @@ const APPS = [
   { id:'calculator', name:'计算器',   icon:'🧮', grad:['#ffb340','#ff7a18'], kw:'计算 算数 数学 加减乘除' },
   { id:'weather',    name:'天气',     icon:'⛅', grad:['#5ec8ff','#1a73e8'], kw:'天气 气温 预报 下雨' },
   { id:'album',      name:'相册',     icon:'🖼️', grad:['#ff8fb1','#c44df0'], kw:'相册 照片 图片 图库' },
-  { id:'notes',      name:'便签',     icon:'📝', grad:['#ffd76a','#ff9f1a'], kw:'便签 笔记 备忘 日记 记录' },
-  { id:'clock',      name:'时钟',     icon:'🕐', grad:['#4b5563','#111827'], kw:'时钟 闹钟 秒表 计时' },
   { id:'music',      name:'音乐',     icon:'🎵', grad:['#ff6b6b','#c2185b'], kw:'音乐 歌曲 播放器 听歌' },
+  { id:'video',      name:'短视频',   icon:'▶️', grad:['#ff4d8d','#c026d3'], kw:'短视频 视频 刷视频 抖音 快手 直播' },
   { id:'map',        name:'地图',     icon:'🗺️', grad:['#4ade80','#0f9d58'], kw:'地图 导航 定位 路线' },
+  { id:'delivery',   name:'袋鼠外卖', icon:'🦘', grad:['#fbbf24','#f59e0b'], kw:'外卖 点餐 送餐 美食 袋鼠 吃饭 饿了' },
   { id:'store',      name:'应用商店', icon:'🛍️', grad:['#ff9a44','#f4511e'], kw:'商店 市场 下载 安装' },
   { id:'browser',    name:'浏览器',   icon:'🌐', grad:['#48c6ef','#1a73e8'], kw:'浏览器 上网 网页 搜索' },
   { id:'camera',     name:'相机',     icon:'📷', grad:['#9aa4b2','#3b4452'], kw:'相机 拍照 摄影 照片' },
   { id:'messages',   name:'短信',     icon:'💬', grad:['#5ce36b','#16a34a'], kw:'短信 消息 聊天 对话' },
-  { id:'fish',       name:'摸鱼检测', icon:'🐟', grad:['#2dd4bf','#0d9488'], kw:'摸鱼 检测 划水' },
-  { id:'game',       name:'小游戏',   icon:'🎮', grad:['#ff6b81','#c2185b'], kw:'游戏 贪吃蛇 玩' },
   { id:'phone',      name:'电话',     icon:'📞', grad:['#5ce36b','#128c3e'], kw:'电话 拨号 通话' },
-  { id:'health',     name:'健康',     icon:'❤️', grad:['#ff6b6b','#d32f2f'], kw:'健康 步数 运动 心率 睡眠' },
   { id:'settings',   name:'设置',     icon:'⚙️', grad:['#9aa4b2','#4b5563'], kw:'设置 系统 关于 配置' },
+  { id:'terminal',   name:'智能终端', icon:'✦', grad:['#8b5cf6','#5b21b6'], kw:'智能终端 AI 助手 语音 助理 自动 执行 豆包' },
 ];
 APPS.forEach(a=>{ a.svg=ICONS[a.id]; });
 
 const DOCK_IDS = ['phone','browser','camera','messages','store'];
 
-// 桌面文件夹（系统聚合）
-const FOLDERS = [
-  { name:'为你推荐', ids:['music','notes','album','game'] },
-  { name:'系统工具', ids:['clock','map','health','settings'] },
-];
+// 桌面文件夹（默认不展示任何文件夹）
+const FOLDERS = [];
 
 // ---------- 幻觉词库 ----------
 const WORDS = {
