@@ -20,6 +20,7 @@
   const appLayer=document.getElementById('appLayer');
   const frame=document.getElementById('appFrame');
   let currentId=null,currentName=null,busy=false;
+  let currentDNA=null;   // 当前应用的分享快照
 
   // ---------- 数据缓存 / 预热 / 视图快照 ----------
   // dataCache: app id -> LLM 数据（命中即秒开，不重复请求）
@@ -174,21 +175,26 @@
     // 并行：动画 + 在线生成内容（命中缓存则极快）
     if(sourceEl)sourceEl.textContent='正在连接网络…';
     const inRegistry=APPS.some(a=>a.id===id);
-    const cached=hasCache(id)||id==='terminal'||id==='browser'||!inRegistry;
-    const llmPromise = (id==='terminal'||id==='browser')
-      ? Promise.resolve(null)
-      : preload(id,name);
+    const forced=(opts&&opts.data!==undefined)?opts.data:undefined;
+    const cached=hasCache(id)||id==='terminal'||id==='browser'||!inRegistry||forced!==undefined;
+    const llmPromise = (forced!==undefined)
+      ? Promise.resolve(forced)
+      : ((id==='terminal'||id==='browser') ? Promise.resolve(null) : preload(id,name));
     await printCode(name,id,cached);
     // 等待上限：内置应用 3.5s；商店自装的通用应用只需 0.9s（本地模板已足够）
     // 超时就用本地内容先把应用打开，LLM 结果留在缓存里供下次使用
     const waitMs = inRegistry ? 3500 : 900;
     let llmData = null;
-    try{
-      llmData = await Promise.race([
-        llmPromise,
-        new Promise(r=>setTimeout(()=>r(null),waitMs))
-      ]);
-    }catch(e){ llmData=null; }
+    if(forced!==undefined){
+      llmData = forced;          // DNA 分享：直接用冻结的数据，不等待、不请求
+    }else{
+      try{
+        llmData = await Promise.race([
+          llmPromise,
+          new Promise(r=>setTimeout(()=>r(null),waitMs))
+        ]);
+      }catch(e){ llmData=null; }
+    }
     // 追加内容来源状态行
     const d=document.createElement('div');
     d.className='ln';
@@ -235,6 +241,25 @@
     frame.srcdoc=html;
     busy=false;
     if(opts&&opts.toast)window.HOS.toast(opts.toast);
+
+    // 记录本次生成的"DNA"（可分享快照）
+    if(id==='__external__'||id==='terminal'){
+      currentDNA=null;
+    }else{
+      currentDNA={v:DNA_VER,i:id,n:name,d:llmData||null,t:Date.now()};
+    }
+    const sb=document.getElementById('dnaShare');
+    if(sb){
+      sb.hidden=!currentDNA;
+      // 有标题栏的应用放右上角；无标题栏（bare）的应用下移，避免压住它自己的头部
+      sb.style.top=html.indexOf('class="abar"')>=0?'10px':'48px';
+      sb.onclick=function(e){ e.stopPropagation(); shareCurrent(); };
+    }
+    if(!(opts&&opts.dna)){
+      const bn=document.getElementById('dnaBanner');
+      if(bn)bn.hidden=true;
+    }
+
     // 应用已经显示出来 → 并行预取「接下来可能打开」的应用，用户切过去就能秒开
     if(id!=='terminal'&&id!=='browser'){
       setTimeout(()=>{ try{ prefetchRelated(id); }catch(e){} },520);
@@ -253,8 +278,10 @@
       const back=document.getElementById('extBack');
       if(back)back.hidden=true;
     }
-    currentId=null;currentName=null;
+    currentId=null;currentName=null;currentDNA=null;
     appLayer.hidden=true;
+    const sb=document.getElementById('dnaShare'); if(sb)sb.hidden=true;
+    const bn=document.getElementById('dnaBanner'); if(bn)bn.hidden=true;
     frame.srcdoc='<html><body style="background:#0d0e14"></body></html>';
   }
 
@@ -529,6 +556,131 @@
     }
   }
 
+  // ---------- 应用 DNA：一次生成结果的快照，可编码进 URL 分享 ----------
+  const DNA_VER=1;
+
+  function bytesToB64(bytes){
+    let s='';
+    for(let i=0;i<bytes.length;i++)s+=String.fromCharCode(bytes[i]);
+    return btoa(s);
+  }
+  function b64ToBytes(b64){
+    const s=atob(b64);
+    const out=new Uint8Array(s.length);
+    for(let i=0;i<s.length;i++)out[i]=s.charCodeAt(i);
+    return out;
+  }
+
+  async function encodeDNA(dna){
+    const json=JSON.stringify(dna);
+    const raw=new TextEncoder().encode(json);
+    // 优先压缩（Chrome 80+ / Safari 16.4+），失败则裸 base64
+    try{
+      if(typeof CompressionStream!=='undefined'){
+        const stream=new Blob([raw]).stream().pipeThrough(new CompressionStream('deflate-raw'));
+        const buf=await new Response(stream).arrayBuffer();
+        return 'z'+bytesToB64(new Uint8Array(buf));
+      }
+    }catch(e){}
+    return 'r'+bytesToB64(raw);
+  }
+
+  async function decodeDNA(code){
+    if(!code)return null;
+    const tag=code[0], body=code.slice(1);
+    let bytes;
+    if(tag==='z'){
+      if(typeof DecompressionStream==='undefined')return null;
+      const stream=new Blob([b64ToBytes(body)]).stream().pipeThrough(new DecompressionStream('deflate-raw'));
+      const buf=await new Response(stream).arrayBuffer();
+      bytes=new Uint8Array(buf);
+    }else if(tag==='r'){
+      bytes=b64ToBytes(body);
+    }else{
+      return null;
+    }
+    const json=new TextDecoder().decode(bytes);
+    const o=JSON.parse(json);
+    if(!o||typeof o!=='object'||!o.i)return null;
+    return o;
+  }
+
+  // 生成分享链接（当前应用有 DNA 才可用）
+  async function buildShareLink(){
+    if(!currentDNA)return null;
+    const code=await encodeDNA(currentDNA);
+    return location.origin+location.pathname+'#dna='+encodeURIComponent(code);
+  }
+
+  async function copyText(t){
+    try{
+      if(navigator.clipboard&&navigator.clipboard.writeText){ await navigator.clipboard.writeText(t); return true }
+    }catch(e){}
+    try{
+      const ta=document.createElement('textarea');
+      ta.value=t;ta.style.cssText='position:fixed;left:-9999px;top:0;opacity:0';
+      document.body.appendChild(ta);ta.select();
+      const ok=document.execCommand('copy');ta.remove();
+      return ok;
+    }catch(e){ return false }
+  }
+
+  async function shareCurrent(){
+    const link=await buildShareLink();
+    if(!link){ if(window.HOS&&window.HOS.toast)window.HOS.toast('这个页面还没有可分享的快照'); return }
+    if(link.length>16000){ if(window.HOS&&window.HOS.toast)window.HOS.toast('内容太大，链接过长'); return }
+
+    const sheet=document.getElementById('dnaSheet');
+    const input=document.getElementById('dsLink');
+    const desc=document.getElementById('dsDesc');
+    if(!sheet||!input){ // 兜底：直接复制
+      const ok=await copyText(link);
+      if(window.HOS&&window.HOS.toast)window.HOS.toast(ok?'✓ 链接已复制':'复制失败，请手动复制');
+      return;
+    }
+    input.value=link;
+    if(desc)desc.textContent='对方打开会看到完全一样的「'+(currentDNA&&currentDNA.n?String(currentDNA.n).replace(/[<>&"']/g,''):'应用')+'」';
+    sheet.hidden=false;
+
+    const close=()=>{ sheet.hidden=true };
+    document.getElementById('dsClose').onclick=close;
+    sheet.onclick=e=>{ if(e.target===sheet)close() };
+    const copyBtn=document.getElementById('dsCopy');
+    copyBtn.onclick=async function(){
+      const ok=await copyText(link);
+      this.textContent=ok?'✓ 已复制':'请长按选中复制';
+      setTimeout(()=>{ this.textContent='复制链接' },1600);
+    };
+    // 打开面板时顺手尝试复制一次（多数浏览器允许在点击手势内复制）
+    copyText(link).then(ok=>{ if(ok)copyBtn.textContent='✓ 已复制';
+      setTimeout(()=>{ copyBtn.textContent='复制链接' },2000); });
+  }
+
+  // 解析 URL 里的 DNA 并打开（返回是否成功）
+  async function openFromDNA(){
+    const m=(location.hash||'').match(/[#&]dna=([^&]+)/);
+    if(!m)return false;
+    let dna=null;
+    try{ dna=await decodeDNA(decodeURIComponent(m[1])) }catch(e){ dna=null }
+    if(!dna)return false;
+    const name=String(dna.n||'').slice(0,16)||'分享的应用';
+    const id=String(dna.i||'__generic__').slice(0,32);
+    // 用 DNA 里冻结的数据渲染，不重新请求模型
+    await openApp(id,name,{data:dna.d||null,dna:true});
+    const banner=document.getElementById('dnaBanner');
+    if(banner){
+      banner.hidden=false;
+      banner.innerHTML='<span>这是别人分享的「'+name.replace(/[<>&"']/g,'')+'」快照</span><button id="dnaRegen">生成我的版本</button>';
+      const rb=document.getElementById('dnaRegen');
+      if(rb)rb.onclick=function(){
+        banner.hidden=true;
+        history.replaceState(null,'',location.pathname+location.search);
+        openApp(id,name,{force:true});
+      };
+    }
+    return true;
+  }
+
   // 接收 iframe 内部消息
   // 外部站点只允许请求关闭
   const EXTERNAL_ALLOW=['close'];
@@ -622,7 +774,7 @@
     }
   });
 
-  window.ENGINE={openApp,closeApp,regen,warmup,refreshData,preload,hasCache,openExternal,
+  window.ENGINE={openApp,closeApp,regen,warmup,refreshData,preload,hasCache,openExternal,openFromDNA,shareCurrent,buildShareLink,
     cacheStatus(){ return {cached:Object.keys(dataCache),pending:Object.keys(pending),queue:prefetchQueue.slice()}; }};
   bindP2PInbox();
   // 已注册用户：启动时自动上线

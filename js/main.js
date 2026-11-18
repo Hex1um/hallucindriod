@@ -430,8 +430,21 @@
   }
 
   // ---------- 锁屏交互 ----------
+  let dnaOpened=false;
   function unlock(){
     lockscreen.classList.add('hidden');
+    // 通过 #dna= 链接进来：解锁后直接打开分享的应用
+    if(!dnaOpened && /[#&]dna=/.test(location.hash||'')){
+      dnaOpened=true;
+      setTimeout(()=>{
+        if(window.ENGINE&&window.ENGINE.openFromDNA){
+          window.ENGINE.openFromDNA().then(ok=>{
+            if(!ok)toast('这个分享链接已损坏');
+          });
+        }
+      },420);
+      return;
+    }
     setTimeout(()=>toast(pick(WORDS.toastTips)),400);
   }
   lockscreen.addEventListener('click',e=>{

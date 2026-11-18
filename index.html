@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#0a0a0f">
 <title>Hallucindriod · 幻卓</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='15' fill='%237c3aed'/><text x='32' y='46' font-size='40' text-anchor='middle' fill='white'>✦</text></svg>">
-<link rel="stylesheet" href="css/style.css?v=26">
+<link rel="stylesheet" href="css/style.css?v=28">
 </head>
 <body>
 
@@ -101,6 +101,19 @@
   <!-- 应用层 -->
   <div class="app-layer" id="appLayer" hidden>
     <button class="ext-back" id="extBack" hidden aria-label="返回">‹</button>
+    <button class="dna-share" id="dnaShare" hidden aria-label="分享应用">↗</button>
+    <div class="dna-banner" id="dnaBanner" hidden></div>
+    <div class="dna-sheet" id="dnaSheet" hidden>
+      <div class="ds-card">
+        <div class="ds-t">分享这个应用</div>
+        <div class="ds-d" id="dsDesc">对方打开会看到完全一样的页面</div>
+        <input class="ds-link" id="dsLink" readonly>
+        <div class="ds-btns">
+          <button class="ds-no" id="dsClose">关闭</button>
+          <button class="ds-yes" id="dsCopy">复制链接</button>
+        </div>
+      </div>
+    </div>
     <iframe id="appFrame" title="应用" sandbox="allow-scripts allow-forms allow-modals allow-popups"></iframe>
   </div>
 
@@ -124,12 +137,12 @@
 
 </div>
 
-<script src="js/data.js?v=26"></script>
-<script src="js/apps.js?v=26"></script>
-<script src="js/apps2.js?v=26"></script>
-<script src="js/llm.js?v=26"></script>
-<script src="js/p2p.js?v=26"></script>
-<script src="js/engine.js?v=26"></script>
-<script src="js/main.js?v=26"></script>
+<script src="js/data.js?v=28"></script>
+<script src="js/apps.js?v=28"></script>
+<script src="js/apps2.js?v=28"></script>
+<script src="js/llm.js?v=28"></script>
+<script src="js/p2p.js?v=28"></script>
+<script src="js/engine.js?v=28"></script>
+<script src="js/main.js?v=28"></script>
 </body>
 </html>
