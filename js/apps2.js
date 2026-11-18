@@ -513,6 +513,23 @@
       +'.qempty b{display:block;font-size:14px;color:#c9cad6;margin-bottom:8px}'
       +'.qempty span{font-size:11.5px;line-height:1.7}'
       +'.qempty button{margin-top:18px;border:none;border-radius:999px;padding:10px 24px;background:#3b82f6;color:#fff;font-size:12.5px;font-weight:600;cursor:pointer}'
+      +'.qtop{display:flex;align-items:center;gap:15px;padding:11px 14px 4px}'
+      +'.qtop .ic{font-size:19px;color:#d5d7e0;line-height:1;cursor:pointer;flex-shrink:0}'
+      +'.qtop .ic:active{opacity:.55}'
+      +'.qtop .title{flex:1;text-align:center;font-size:16.5px;font-weight:700;letter-spacing:.5px}'
+      +'.qsubs{display:flex;gap:14px;padding:12px 14px 14px;overflow-x:auto;scrollbar-width:none;border-bottom:1px solid rgba(255,255,255,.05)}'
+      +'.qsubs::-webkit-scrollbar{display:none}'
+      +'.qsub{flex:0 0 auto;width:52px;text-align:center;cursor:pointer}'
+      +'.qsub .sa{width:46px;height:46px;border-radius:50%;margin:0 auto;display:flex;align-items:center;justify-content:center;font-size:21px;position:relative;border:2px solid rgba(255,255,255,.16)}'
+      +'.qsub .plus{position:absolute;right:-3px;bottom:-3px;width:17px;height:17px;border-radius:50%;background:#22c55e;color:#fff;font-size:12px;line-height:15px;text-align:center;border:2px solid #0f1115;font-weight:700}'
+      +'.qsub .sn{font-size:9px;color:#8b90a5;margin-top:5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}'
+      +'.pinkav{background:linear-gradient(135deg,#f472b6,#db2777);font-size:20px}'
+      +'.qdbar{position:sticky;bottom:0;height:56px;display:flex;align-items:center;background:#12141a;border-top:1px solid rgba(255,255,255,.06);flex-shrink:0}'
+      +'.qdb{flex:1;text-align:center;font-size:9.5px;color:#8b90a5;cursor:pointer;position:relative}'
+      +'.qdb .ti{display:block;font-size:20px;margin-bottom:1px;line-height:1.2}'
+      +'.qdb.on{color:#fff;font-weight:600}'
+      +'.qdb.plus .ti{width:40px;height:27px;line-height:23px;border:2px solid #c9cad6;border-radius:8px;font-size:17px;margin:0 auto 2px}'
+      +'.qdb .n{position:absolute;top:-3px;left:calc(50% + 6px);background:#ef4444;color:#fff;border-radius:999px;font-size:9px;padding:1px 4px;line-height:1.3}'
       +'.qtabs{position:sticky;bottom:0;height:56px;display:flex;align-items:center;background:#12141a;border-top:1px solid rgba(255,255,255,.06)}'
       +'.qt{flex:1;text-align:center;font-size:9.5px;color:#6b7080;cursor:pointer}'
       +'.qt .ti{display:block;font-size:19px;margin-bottom:1px}'
@@ -575,40 +592,63 @@ function renderRegister(){
 }
 function renderMain(){
   var f=S.friends||[];
-  var listHtml;
+  var unreadAll=f.reduce(function(a,x){return a+(Number(x.unread)||0)},0);
+  var listHtml='';
+  if(f.length){
+    // 互动消息：取第一个好友生成一条"赞了你分享的视频"
+    var who=(f[0]&&f[0].name)||'好友';
+    listHtml+='<div class="qrow" id="interactRow"><div class="ra pinkav">⚡</div>'
+      +'<div class="rm"><div class="rn">互动消息</div>'
+      +'<div class="rp">'+esc(who)+' 赞了你分享的视频</div></div>'
+      +'<div class="rr"><span class="rt">11分钟前</span><span class="qbadge">10</span></div></div>';
+  }
   if(!f.length){
-    listHtml='<div class="qempty"><div class="ic">👥</div><b>还没有好友</b>'
+    listHtml+='<div class="qempty"><div class="ic">👥</div><b>还没有好友</b>'
       +'<span>点击右上角 + 搜索用户名添加好友<br>对方不存在时会为你生成一个聊天对象</span>'
       +'<button id="addFirst">添加好友</button></div>';
   }else{
-    listHtml=f.map(function(x,i){
+    listHtml+=f.map(function(x,i){
       var un=Number(x.unread)||0;
+      var hasMsgs=(x.msgs&&x.msgs.length>1);
+      var prefix=(un===0&&hasMsgs)?'已读 · ':'';
+      var badge=(x.badge&&String(x.badge).trim())?('<span class="qfire">'+esc(String(x.badge).trim())+'</span>'):'';
       return '<div class="qrow" data-i="'+i+'"><div class="ra" style="background:'+GRADS[i%GRADS.length]+'">'+esc(x.avatar||'👤')+'</div>'
-        +'<div class="rm"><div class="rn">'+esc(x.name||'好友')+'<span class="lv">'+esc(x.level||'Lv1')+'</span></div>'
-        +'<div class="rp">'+esc(lastOf(x))+'</div></div>'
+        +'<div class="rm"><div class="rn">'+esc(x.name||'好友')+badge+'</div>'
+        +'<div class="rp">'+prefix+esc(lastOf(x))+'</div></div>'
         +'<div class="rr"><span class="rt">'+ago(x.ts||(x.msgs&&x.msgs.length?x.msgs[x.msgs.length-1].ts:0))+'</span>'
         +(un>0?'<span class="qbadge">'+un+'</span>':'')+'</div></div>';
     }).join('');
   }
+  var subs=[['限时日常','🐱',true],['不自卑再改','🤍',false],['Supertlee','🐷',false],['AAA火鸡面','⬛',false],['她若知我','🎀',false]];
+  var subsHtml=subs.map(function(x){
+    return '<div class="qsub"><div class="sa" style="background:'+GRADS[Math.floor(Math.random()*GRADS.length)]+'">'+x[1]
+      +(x[2]?'<span class="plus">+</span>':'')+'</div><div class="sn">'+x[0]+'</div></div>';
+  }).join('');
   app.innerHTML='<div class="qq">'
-    +'<div class="qhead"><div class="qava">'+esc((S.profile&&S.profile.name||'我').slice(0,2))+'<span class="on"></span></div>'
-    +'<div class="qme"><b>'+esc(S.profile&&S.profile.name||'幻卓用户')+'</b><span>● 在线 · WiFi</span></div>'
-    +'<div class="qplus" id="qplus">＋</div></div>'
-    +'<div class="qsearch" id="qsearch">搜索好友、群聊</div>'
-    +'<div class="qwin"><span>🖥️</span><span>已登录 Windows</span><span class="ar">›</span></div>'
+    +'<div class="qtop"><span class="ic" id="qmenu">☰</span><span class="ic">👕</span>'
+    +'<span class="title">消息</span><span class="ic" id="qsearch">⌕</span><span class="ic" id="qplus">⊕</span></div>'
+    +'<div class="qsubs">'+subsHtml+'</div>'
     +'<div class="qlist">'+listHtml+'</div>'
-    +'<div class="qtabs"><div class="qt on" data-t="msg"><span class="ti">💬</span>消息'+(f.reduce(function(a,x){return a+(Number(x.unread)||0)},0)>0?'<span class="n">'+f.reduce(function(a,x){return a+(Number(x.unread)||0)},0)+'</span>':'')+'</div>'
-    +'<div class="qt" data-t="contact"><span class="ti">👤</span>联系人</div>'
-    +'<div class="qt" data-t="feed"><span class="ti">🔄</span>动态</div></div></div>';
+    +'<div class="qdbar"><div class="qdb" data-t="home"><span class="ti">🏠</span>首页</div>'
+    +'<div class="qdb" data-t="friends"><span class="ti">👥</span>朋友</div>'
+    +'<div class="qdb plus" data-t="plus"><span class="ti">+</span></div>'
+    +'<div class="qdb on" data-t="msg"><span class="ti">💬</span>消息'+(unreadAll>0?'<span class="n">'+unreadAll+'</span>':'')+'</div>'
+    +'<div class="qdb" data-t="me"><span class="ti">👤</span>我</div></div></div>';
   document.getElementById('qplus').onclick=openAdd;
   document.getElementById('qsearch').onclick=openAdd;
+  document.getElementById('qmenu').onclick=function(){openSheet('菜单','个人资料<br>设置<br>夜间模式<br>关于')};
   var af=document.getElementById('addFirst'); if(af)af.onclick=openAdd;
-  app.querySelectorAll('.qrow').forEach(function(r){r.onclick=function(){openChat(Number(this.getAttribute('data-i')))}});
-  app.querySelectorAll('.qt').forEach(function(t){t.onclick=function(){
+  var ir=document.getElementById('interactRow');
+  if(ir)ir.onclick=function(){openSheet('互动消息',esc((f[0]&&f[0].name)||'好友')+' 赞了你分享的视频<br><br>· 2 分钟前 赞了你的视频<br>· 1 小时前 评论了你<br>· 昨天 关注了你')};
+  app.querySelectorAll('.qrow[data-i]').forEach(function(r){r.onclick=function(){openChat(Number(this.getAttribute('data-i')))}});
+  app.querySelectorAll('.qsub').forEach(function(x){x.onclick=function(){openSheet('订阅号','来自订阅号的更新<br><br>· 限时日常：今天的日常<br>· Supertlee：分享了一个视频<br>· AAA火鸡面：新品上架')}});
+  app.querySelectorAll('.qdb').forEach(function(t){t.onclick=function(){
     var k=this.getAttribute('data-t');
-    app.querySelectorAll('.qt').forEach(function(x){x.classList.remove('on')});this.classList.add('on');
-    if(k==='contact')openSheet('联系人',(S.friends||[]).length?(S.friends||[]).map(function(x){return '· '+esc(x.name)+'（'+esc(x.level||'Lv1')+'）'}).join('<br>'):'还没有联系人，先去消息页添加好友');
-    if(k==='feed')openSheet('动态','暂无好友动态<br><br>添加好友后，这里会显示他们的分享');
+    if(k==='plus'){openAdd();return}
+    app.querySelectorAll('.qdb').forEach(function(x){x.classList.remove('on')});this.classList.add('on');
+    if(k==='home')openSheet('首页','这是你的首页<br><br>· 好友动态<br>· 推荐内容<br>· 热门话题');
+    if(k==='friends')openSheet('朋友','好友 '+(f.length)+' 人<br><br>'+(f.length?f.map(function(x){return '· '+esc(x.name)}).join('<br>'):'还没有好友，点 + 添加'));
+    if(k==='me')openSheet('我','👤 '+esc((S.profile&&S.profile.name)||'幻卓用户')+'<br><br>好友 '+f.length+' 人<br>在线状态：WiFi<br>等级：Lv1');
   }});
 }
 function openAdd(){
@@ -1260,7 +1300,8 @@ render();`;
       +'.shb{flex:1;overflow-y:auto;padding:18px;font-size:12.5px;color:#c9cad6;line-height:2}'
       +'.cmt{display:flex;gap:9px;margin-bottom:14px}'
       +'.cmt .a{width:30px;height:30px;border-radius:50%;background:rgba(255,255,255,.12);display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0}'
-      +'.cmt .n{font-size:10.5px;color:#8b90a5}.cmt .x{font-size:12.5px;color:#e6e7ee;margin-top:3px;line-height:1.5}';
+      +'.cmt .n{font-size:10.5px;color:#8b90a5}.cmt .x{font-size:12.5px;color:#e6e7ee;margin-top:3px;line-height:1.5}'
+      +'.moretip{position:absolute;left:50%;bottom:80px;transform:translateX(-50%);background:rgba(0,0,0,.6);color:#fff;font-size:11px;padding:7px 14px;border-radius:999px;z-index:7;pointer-events:none}';
 
     const html = '<div class="dt">'
       +'<div class="dtop"><span class="t on" data-f="rec">推荐</span><span class="t" data-f="follow">关注</span>'
@@ -1279,43 +1320,117 @@ var BGS=['linear-gradient(160deg,#4c1d95,#831843 55%,#b91c1c)','linear-gradient(
 var feed=document.getElementById('feed'),sh=document.getElementById('sh'),curFilter='rec';
 function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]})}
 var TAGS=['#生活记录','#随手拍','#日常','#治愈系','#今日份快乐','#城市夜景'];
-function render(){
-  var v=D.videos.slice();
-  if(curFilter==='follow')v=v.slice(0,3);
-  if(curFilter==='live')v=v.slice(0,2);
-  if(curFilter==='city')v=v.slice(2,5);
-  feed.innerHTML=v.map(function(x,i){
-    var tag=TAGS[i%TAGS.length],tags2=TAGS[(i+2)%TAGS.length];
-    return '<div class="item" style="background:'+BGS[i%BGS.length]+'">'
-      +'<div class="scene">'+esc(x.cover||'🎬')+'</div>'
-      +'<div class="rail">'
-      +'<div class="rav">'+esc((x.up||'U').slice(0,1))+'<span class="plus">+</span></div>'
-      +'<div class="act" data-a="like"><i>🤍</i><b>'+esc(x.views||'1.2万')+'</b></div>'
-      +'<div class="act" data-a="cmt"><i>💬</i><b>'+esc(x.danmaku||'328')+'</b></div>'
-      +'<div class="act" data-a="fav"><i>⭐</i><b>'+esc(String(100+Math.floor(Math.random()*900)))+'</b></div>'
-      +'<div class="act" data-a="share"><i>↗️</i><b>分享</b></div>'
-      +'</div>'
-      +'<div class="meta"><div class="mname">@'+esc(x.up||'创作者')+'</div>'
-      +'<div class="mcap">'+esc(x.title||'')+'</div>'
-      +'<div class="mtag">'+tag+' '+tags2+'</div>'
-      +'<div class="mmusic"><span class="disc"></span><span>'+esc(x.up||'原声')+' · 原声</span></div></div>'
-      +'</div>';
-  }).join('');
-  feed.scrollTop=0;
-  feed.querySelectorAll('.act').forEach(function(a){
+var TITLES=['凌晨三点的街道','这大概就是生活吧','用一年时间做了一件事','第一次尝试，翻车了','被这片海治愈了','花三天做了个东西','这个技巧真的太实用了','记录一下普通的一天','原来还能这样','突然就下雨了','终于把房间整理好了','路边摊的快乐','在城市的角落发呆','今天也要好好吃饭','一只猫的下午'];
+var UPS=['@凌晨四点','@生活记录员','@手作日常','@城市观察','@一个人的旅行','@今天也在努力','@慢慢来比较快'];
+var COVERS=['🌃','🍜','🎧','🌊','🛠️','🐈','☕','🚲','🌻','🎬','🏔️','🍥'];
+var VIEWS=['1.2万','3.4万','8.7万','12.3万','4567','2.1万','7.8万','5.6万'];
+var DURS=['0:21','1:06','0:48','2:13','0:35','1:47','0:59','3:02'];
+var allVideos=[],loaded=0,PAGE=5,loadingMore=false,moreTip=null;
+function makeVideo(i){
+  if(i<D.videos.length)return D.videos[i];
+  var k=i%D.videos.length;
+  return {
+    title:TITLES[i%TITLES.length],
+    up:UPS[i%UPS.length],
+    views:VIEWS[i%VIEWS.length],
+    danmaku:String(50+((i*37)%900)),
+    dur:DURS[i%DURS.length],
+    cover:COVERS[i%COVERS.length],
+    hot:(i%3===0)
+  };
+}
+function itemHTML(x,i){
+  var tag=TAGS[i%TAGS.length],tags2=TAGS[(i+3)%TAGS.length];
+  return '<div class="item" style="background:'+BGS[i%BGS.length]+'">'
+    +'<div class="scene">'+esc(x.cover||'🎬')+'</div>'
+    +'<div class="rail">'
+    +'<div class="rav">'+esc((x.up||'U').slice(1,2)||'U')+'<span class="plus">+</span></div>'
+    +'<div class="act" data-a="like"><i>🤍</i><b>'+esc(x.views||'1.2万')+'</b></div>'
+    +'<div class="act" data-a="cmt"><i>💬</i><b>'+esc(x.danmaku||'328')+'</b></div>'
+    +'<div class="act" data-a="fav"><i>⭐</i><b>'+esc(String(100+((i*73)%900)))+'</b></div>'
+    +'<div class="act" data-a="share"><i>↗️</i><b>分享</b></div>'
+    +'</div>'
+    +'<div class="meta"><div class="mname">@'+esc((x.up||'创作者').replace(/^@/,''))+'</div>'
+    +'<div class="mcap">'+esc(x.title||'')+'</div>'
+    +'<div class="mtag">'+tag+' '+tags2+'</div>'
+    +'<div class="mmusic"><span class="disc"></span><span>'+esc((x.up||'原声').replace(/^@/,''))+' · 原声</span></div></div>'
+    +'</div>';
+}
+function bindActs(scope){
+  (scope||feed).querySelectorAll('.act').forEach(function(a){
+    if(a.__b)return; a.__b=true;
     a.onclick=function(ev){
       ev.stopPropagation();
       var k=this.getAttribute('data-a'),ic=this.querySelector('i');
       if(k==='like'){var on=ic.textContent==='❤️';ic.textContent=on?'🤍':'❤️';ic.style.filter=on?'':'drop-shadow(0 0 8px #fb7185)'}
-      else if(k==='fav'){var s=ic.textContent==='⭐';ic.textContent=s?'☆':'⭐'}
+      else if(k==='fav'){var f=ic.textContent==='⭐';ic.textContent=f?'☆':'⭐'}
       else if(k==='cmt'){openComments(this)}
       else{sheet('分享','复制链接<br>分享给好友<br>保存到相册')}
     };
   });
-  feed.querySelectorAll('.rav').forEach(function(r){
+  (scope||feed).querySelectorAll('.rav').forEach(function(r){
+    if(r.__b)return; r.__b=true;
     r.onclick=function(ev){ev.stopPropagation();var p=this.querySelector('.plus');p.textContent=p.textContent==='+'?'✓':'+'}
   });
 }
+function appendPage(){
+  var frag=document.createDocumentFragment();
+  var tmp=document.createElement('div');
+  var html='';
+  for(var i=0;i<PAGE;i++){
+    var v=makeVideo(loaded);
+    allVideos.push(v);
+    html+=itemHTML(v,loaded);
+    loaded++;
+  }
+  tmp.innerHTML=html;
+  while(tmp.firstChild){ frag.appendChild(tmp.firstChild) }
+  feed.appendChild(frag);
+  bindActs();
+  if(loaded>60){
+    // 控制 DOM 数量：移除最早的一屏（保持可视位置）
+    var first=feed.querySelector('.item');
+    var h=first?first.offsetHeight:0;
+    if(first){first.parentNode.removeChild(first);feed.scrollTop=Math.max(0,feed.scrollTop-h)}
+  }
+}
+function filteredBase(){
+  var v=D.videos.slice();
+  if(curFilter==='follow')v=v.slice(0,3);
+  if(curFilter==='live')v=v.slice(0,2);
+  if(curFilter==='city')v=v.slice(2,5);
+  return v;
+}
+function render(){
+  feed.innerHTML='';allVideos=[];loaded=0;
+  var html='';
+  filteredBase().forEach(function(x){allVideos.push(x);html+=itemHTML(x,loaded);loaded++});
+  feed.innerHTML=html;
+  bindActs();
+  appendPage();
+  feed.scrollTop=0;
+  loadingMore=false;
+}
+function showMoreTip(){
+  if(moreTip)return;
+  moreTip=document.createElement('div');
+  moreTip.className='moretip';
+  moreTip.textContent='正在加载更多…';
+  feed.appendChild(moreTip);
+}
+function hideMoreTip(){
+  if(moreTip&&moreTip.parentNode)moreTip.parentNode.removeChild(moreTip);
+  moreTip=null;
+}
+feed.addEventListener('scroll',function(){
+  if(loadingMore)return;
+  if(feed.scrollTop+feed.clientHeight*2.2>=feed.scrollHeight){
+    loadingMore=true;
+    showMoreTip();
+    setTimeout(function(){appendPage();hideMoreTip();loadingMore=false;},420);
+  }
+},{passive:true});
+
 function openComments(el){
   var body='';
   var cmts=['这个太真实了','已收藏','求bgm','前排','看哭了','好想去这里','这也太好看了吧'];
