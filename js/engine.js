@@ -159,13 +159,20 @@
 
     // 并行：动画 + 在线生成内容（命中缓存则极快）
     if(sourceEl)sourceEl.textContent='正在连接网络…';
-    const cached=hasCache(id)||id==='terminal'||id==='browser';
+    const inRegistry=APPS.some(a=>a.id===id);
+    const cached=hasCache(id)||id==='terminal'||id==='browser'||!inRegistry;
     const llmPromise = (id==='terminal'||id==='browser')
       ? Promise.resolve(null)
       : preload(id,name);
     await printCode(name,id,cached);
+    // 最多等 3.5s：超时先用本地内容把应用打开，LLM 结果留在缓存里供下次使用
     let llmData = null;
-    try{ llmData = await llmPromise; }catch(e){ llmData=null; }
+    try{
+      llmData = await Promise.race([
+        llmPromise,
+        new Promise(r=>setTimeout(()=>r(null),3500))
+      ]);
+    }catch(e){ llmData=null; }
     // 追加内容来源状态行
     const d=document.createElement('div');
     d.className='ln';
@@ -530,6 +537,9 @@
     else if(e.data.type==='social:reply')socialReply(String(e.data.friend||''),String(e.data.text||''));
     else if(e.data.type==='tone'){
       if(window.AUDIO)window.AUDIO.tone(Number(e.data.freq)||0,Number(e.data.dur)||0.25,Number(e.data.vol)||0.1,String(e.data.wave||'sine'));
+    }
+    else if(e.data.type==='restoreApps'){
+      if(window.HOS&&window.HOS.restoreAllApps){ window.HOS.restoreAllApps(); if(window.HOS.toast)window.HOS.toast('已恢复全部应用到桌面'); }
     }
     else if(e.data.type==='install'){
       const a=e.data.app||{};

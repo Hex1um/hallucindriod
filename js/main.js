@@ -44,6 +44,19 @@
     document.addEventListener(ev,function(){ AUDIO.ensure(); },{once:true,capture:true});
   });
 
+  // ---------- 桌面布局（拖拽顺序 / 隐藏） ----------
+  const LAYOUT_KEY='hallucindriod_layout_v1';
+  function loadLayout(){
+    try{
+      const o=JSON.parse(localStorage.getItem(LAYOUT_KEY)||'{}');
+      return {order:Array.isArray(o.order)?o.order:[],hidden:Array.isArray(o.hidden)?o.hidden:[]};
+    }catch(e){ return {order:[],hidden:[]} }
+  }
+  function saveLayout(l){
+    try{ localStorage.setItem(LAYOUT_KEY,JSON.stringify(l)); }catch(e){}
+  }
+  let LAYOUT=loadLayout();
+
   // ---------- 已安装应用（应用商店下载到桌面） ----------
   const INSTALL_KEY='hallucindriod_installed_v1';
   function loadInstalled(){
@@ -104,12 +117,43 @@
     const svg=app.svg||('<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:27px;background:linear-gradient(135deg,'+app.grad[0]+','+app.grad[1]+')">'+app.icon+'</div>');
     return svg;
   }
+  // 桌面可见应用 = 内置 + 已安装，按保存的顺序排，过滤已隐藏
+  function desktopApps(){
+    const seen={};
+    const all=[];
+    APPS.forEach(a=>{ if(!seen[a.id]){seen[a.id]=1;all.push({...a,custom:false})} });
+    (window.__INSTALLED||[]).forEach(a=>{
+      if(seen[a.id])return;
+      seen[a.id]=1;
+      const hs=[[265,320],[200,265],[160,200],[25,320],[340,265],[230,160],[90,160]];
+      let h=0;for(let i=0;i<a.name.length;i++)h=(h*31+a.name.charCodeAt(i))>>>0;
+      const pr=hs[h%hs.length];
+      all.push({id:a.id,name:a.name,icon:a.emoji||'✦',custom:true,
+        grad:['hsl('+pr[0]+' 85% 64%)','hsl('+pr[1]+' 85% 56%)']});
+    });
+    const visible=all.filter(a=>LAYOUT.hidden.indexOf(a.id)<0);
+    if(LAYOUT.order.length){
+      const pos=id=>{const i=LAYOUT.order.indexOf(id);return i<0?9999:i};
+      visible.sort((a,b)=>pos(a.id)-pos(b.id));
+    }
+    return visible;
+  }
+  function hideApp(id){
+    if(LAYOUT.hidden.indexOf(id)<0)LAYOUT.hidden.push(id);
+    LAYOUT.order=LAYOUT.order.filter(x=>x!==id);
+    saveLayout(LAYOUT);
+  }
+  function restoreAllApps(){
+    LAYOUT.hidden=[];
+    saveLayout(LAYOUT);
+    renderIcons();
+  }
   function iconEl(app,cls,onClick){
     const el=document.createElement('div');
     el.className=cls;
     const isDock=cls==='dock-item';
     el.innerHTML='<div class="'+(isDock?'dock-item':'app-icon')+'" style="'+(app.svg?'':'background:linear-gradient(135deg,'+app.grad[0]+','+app.grad[1]+')')+'">'+iconInner(app)+'</div>'
-      +(isDock?'':'<div class="app-name">'+app.name+'</div>');
+      +(isDock?'':'<div class="app-del">×</div><div class="app-name">'+app.name+'</div>');
     // dock-item 本身就是可点击元素，避免内层重复类名导致事件误判
     if(isDock){ el.classList.remove('dock-item'); }
     el.title=app.name;
@@ -150,20 +194,130 @@
     centerAllIcons();
   }
 
+  // ---------- 桌面：长按编辑 / 拖拽排序 / 删除 ----------
+  let EDIT_MODE=false, lpTimer=null, drag=null;
+
+  function setEditMode(on){
+    EDIT_MODE=on;
+    document.body.classList.toggle('desk-edit',on);
+    if(!on){ if(drag)endDrag(null); }
+  }
+  function bindDesktopIcon(el){
+    el.addEventListener('pointerdown',e=>{
+      if(e.button!==undefined&&e.button!==0)return;
+      if(EDIT_MODE){ startDrag(e,el); return; }
+      clearTimeout(lpTimer);
+      lpTimer=setTimeout(()=>{ setEditMode(true); startDrag(e,el); },520);
+    });
+    el.addEventListener('pointerup',()=>{ clearTimeout(lpTimer) });
+    el.addEventListener('pointercancel',()=>{ clearTimeout(lpTimer) });
+    el.addEventListener('pointermove',e=>{
+      if(drag){ moveDrag(e); return }
+      // 明显的滑动说明是翻页手势，取消长按
+      clearTimeout(lpTimer);
+    });
+    el.addEventListener('contextmenu',e=>e.preventDefault());
+  }
+
+  function startDrag(e,el){
+    if(drag)return;
+    const r=el.getBoundingClientRect();
+    const ghost=el.cloneNode(true);
+    ghost.classList.add('drag-ghost');
+    ghost.style.cssText='position:fixed;z-index:999;pointer-events:none;left:'+r.left+'px;top:'+r.top+'px;width:'+r.width+'px;height:'+r.height+'px';
+    document.body.appendChild(ghost);
+    el.classList.add('drag-src');
+    drag={el,ghost,ox:e.clientX-r.left,oy:e.clientY-r.top};
+    try{ el.setPointerCapture&&el.setPointerCapture(e.pointerId) }catch(err){}
+    document.addEventListener('pointermove',onDocMove);
+    document.addEventListener('pointerup',onDocUp);
+  }
+  function moveDrag(e){
+    if(!drag)return;
+    drag.ghost.style.left=(e.clientX-drag.ox)+'px';
+    drag.ghost.style.top=(e.clientY-drag.oy)+'px';
+    // 实时高亮落点
+    const target=hitTest(e.clientX,e.clientY);
+    document.querySelectorAll('.app-item.drop-hi').forEach(x=>x.classList.remove('drop-hi'));
+    if(target&&target!==drag.el)target.classList.add('drop-hi');
+  }
+  function hitTest(x,y){
+    const items=[...appGrid.querySelectorAll('.app-item')].filter(el=>el!==(drag&&drag.el));
+    let best=null,bd=1e9;
+    items.forEach(el=>{
+      const r=el.getBoundingClientRect();
+      const cx=r.left+r.width/2, cy=r.top+r.height/2;
+      const d=(cx-x)*(cx-x)+(cy-y)*(cy-y);
+      if(d<bd){bd=d;best=el}
+    });
+    return best;
+  }
+  function onDocMove(e){ moveDrag(e) }
+  function onDocUp(e){
+    const target=hitTest(e.clientX,e.clientY);
+    endDrag(target);
+  }
+  function endDrag(target){
+    document.removeEventListener('pointermove',onDocMove);
+    document.removeEventListener('pointerup',onDocUp);
+    if(!drag)return;
+    const {el,ghost}=drag;
+    ghost.remove();
+    el.classList.remove('drag-src');
+    document.querySelectorAll('.app-item.drop-hi').forEach(x=>x.classList.remove('drop-hi'));
+    if(target&&target!==el){
+      // 交换顺序并持久化
+      const ids=desktopApps().map(a=>a.id);
+      const from=ids.indexOf(el.dataset.id);
+      const to=ids.indexOf(target.dataset.id);
+      if(from>=0&&to>=0){
+        ids.splice(from,1);
+        ids.splice(to,0,el.dataset.id);
+        LAYOUT.order=ids;
+        saveLayout(LAYOUT);
+      }
+    }
+    drag=null;
+    if(target||EDIT_MODE)renderIcons();
+  }
+
+  function removeApp(id,name){
+    const isBuiltin=APPS.some(a=>a.id===id);
+    if(isBuiltin){
+      hideApp(id);
+      toast('已从桌面移除「'+name+'」（设置里可恢复）');
+    }else{
+      window.__INSTALLED=(window.__INSTALLED||[]).filter(a=>a.id!==id);
+      if(window.HOS&&window.HOS.saveInstalled)window.HOS.saveInstalled(window.__INSTALLED);
+      toast('已删除「'+name+'」');
+    }
+    renderIcons();
+  }
+
+  // 图标上的删除按钮
+  document.addEventListener('click',e=>{
+    const del=e.target.closest&&e.target.closest('.app-del');
+    if(del){
+      e.stopPropagation();
+      const item=del.closest('.app-item');
+      if(item&&confirm('移除「'+(item.dataset.name||'应用')+'」？'))removeApp(item.dataset.id,item.dataset.name||'应用');
+      return;
+    }
+    if(EDIT_MODE&&!e.target.closest('.app-item'))setEditMode(false);
+  });
+
   function renderIcons(){
     appGrid.innerHTML='';
     FOLDERS.forEach(f=>appGrid.appendChild(folderEl(f)));
-    APPS.forEach(app=>{
-      appGrid.appendChild(iconEl(app,'app-item',()=>window.ENGINE.openApp(app.id)));
-    });
-    // 商店下载的应用：emoji 图标 + 哈希配色
-    (window.__INSTALLED||[]).forEach(app=>{
-      const hs=[[265,320],[200,265],[160,200],[25,320],[340,265],[230,160],[90,160]];
-      let h=0;for(let i=0;i<app.name.length;i++)h=(h*31+app.name.charCodeAt(i))>>>0;
-      const pr=hs[h%hs.length];
-      const grad=['hsl('+pr[0]+' 85% 64%)','hsl('+pr[1]+' 85% 56%)'];
-      appGrid.appendChild(iconEl({id:app.id,name:app.name,icon:app.emoji||'✦',grad},'app-item',
-        ()=>window.ENGINE.openApp(app.id,app.name)));
+    desktopApps().forEach(app=>{
+      const el=iconEl(app,'app-item',()=>{
+        if(EDIT_MODE)return;                       // 编辑模式下不打开应用
+        window.ENGINE.openApp(app.id,app.name);
+      });
+      el.dataset.id=app.id;
+      el.dataset.name=app.name;
+      appGrid.appendChild(el);
+      bindDesktopIcon(el);
     });
     dock.innerHTML='';
     DOCK_IDS.forEach(id=>{
@@ -329,6 +483,7 @@
     get social(){ return window.__SOCIAL; },
     saveSocial,
     saveInstalled,
+    restoreAllApps,
     reloadInstalled(){ window.__INSTALLED=loadInstalled(); return window.__INSTALLED; },
     reloadSocial(){ window.__SOCIAL=loadSocial(); return window.__SOCIAL; }
   };
