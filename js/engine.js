@@ -35,22 +35,24 @@
     return p;
   }
 
-  // 后台预热：串行小步匀速，避免把免费源打爆；用户点击时复用 pending
-  let warming=false;
+  // 后台预热：串行匀速，用户一有操作就立刻让路，避免抢占带宽把用户请求拖超时
+  let warming=false, warmCursor=0, warmPauseUntil=0;
+  function noteUserActivity(){ warmPauseUntil=Date.now()+20000; }
   async function warmup(force){
+    if(force){ warmCursor=0; warmPauseUntil=0; }
     if(warming)return;
     warming=true;
     const list=APPS.filter(a=>a.id!=='terminal'&&a.id!=='browser');
-    for(const a of list){
-      if(!force && (a.id in dataCache))continue;
-      if(force){
-        try{ await window.LLM.fetchHallucination(a.id,a.name).then(d=>{dataCache[a.id]=d||null;}); }catch(e){}
-      }else{
-        await preload(a.id,a.name);
-      }
-      await new Promise(r=>setTimeout(r,140));
+    while(warmCursor<list.length){
+      if(Date.now()<warmPauseUntil)break;          // 用户在操作，先让路
+      const a=list[warmCursor];
+      if(!(a.id in dataCache)){ await preload(a.id,a.name); }
+      warmCursor++;
+      await new Promise(r=>setTimeout(r,900));
     }
     warming=false;
+    // 没跑完就稍后继续（用户空闲时）
+    if(warmCursor<list.length)setTimeout(()=>{ try{ if(Date.now()>=warmPauseUntil)warmup(false); }catch(e){} },24000);
   }
 
   // 刷新数据：id 为空=全部。清缓存后后台重新预热
@@ -126,6 +128,7 @@
 
   async function openApp(id,name,opts){
     if(busy)return;
+    noteUserActivity();
     const app=(APPS.find(a=>a.id===id));
     name=name||(app&&app.name)||'应用';
 
@@ -223,6 +226,7 @@
 
   // 通用：iframe 请求父窗口用 LLM 现场生成内容（browser / store）
   async function llmGen(kind,topic,nonce){
+    noteUserActivity();
     let data=null;
     if(window.LLM){
       try{ data=await window.LLM.fetchHallucination(kind,topic); }catch(e){ data=null; }
@@ -293,6 +297,7 @@
 
   // 终端请求：本地规则优先（秒回），复杂指令再交给 LLM 理解
   async function termGen(text,nonce){
+    noteUserActivity();
     const post=data=>{
       if(frame&&frame.contentWindow){
         try{ frame.contentWindow.postMessage({type:'termdata',data:data,nonce:nonce},'*'); }catch(e){}
