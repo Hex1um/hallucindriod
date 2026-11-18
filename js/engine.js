@@ -238,7 +238,7 @@
     if(frame&&frame.contentWindow){
       const msg=kind==='store'
         ? {type:'storedata',data:data,keyword:topic,nonce:nonce}
-        : {type:'webdata',data:data,topic:topic,nonce:nonce};
+        : {type:'webdata',data:data,topic:topic,nonce:nonce,kind:kind};
       try{ frame.contentWindow.postMessage(msg,'*'); }catch(e){}
     }
   }
@@ -488,6 +488,7 @@ background:rgba(12,14,20,.86);backdrop-filter:blur(10px);z-index:9;padding:0 8px
     if(e.data.type==='close')closeApp();
     else if(e.data.type==='regen')regen();
     else if(e.data.type==='webgen')llmGen('browser',e.data.topic||'幻卓空间',e.data.nonce);
+    else if(e.data.type==='websearch')llmGen('websearch',e.data.q||'',e.data.nonce);
     else if(e.data.type==='storegen')llmGen('store',e.data.topic||'应用',e.data.nonce);
     else if(e.data.type==='termgen')termGen(String(e.data.text||''),e.data.nonce);
     else if(e.data.type==='webstate'){ webState={topic:e.data.topic||'',data:e.data.data||null}; }
