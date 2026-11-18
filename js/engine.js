@@ -727,7 +727,16 @@
     });
     let d=null;
     try{ d=await window.LLM.fetchHallucination('evolve',ctx) }catch(e){ d=null }
-    if(!d||!Array.isArray(d.events)||!d.events.length)return null;
+    // 模型不可用 → 本地续写（把今天的事"发酵"成明天的新闻），保证推进总能成功
+    if(!d||!Array.isArray(d.events)||!d.events.length){
+      const old=(w.hotEvents||[])[0]||'城里的怪事';
+      const seeds=[
+        '「'+old.slice(0,14)+'」的事到今天还没人解释清楚',
+        pick(['有人开始在广场收集这些传闻','市政厅贴出一张看不懂的公告','一场雨把昨天的痕迹冲淡了一半','有家店把这件事做成了招牌']),
+        pick(['夜里的路灯比平时亮了三分','有几个陌生人一直在拍照','广播里反复念同一句话','码头的钟慢了十一分钟'])
+      ];
+      d={events:seeds,echo:['昨天的事，今天变成了新的传闻']};
+    }
 
     w.history=Array.isArray(w.history)?w.history:[];
     w.history.unshift({day:w.day||'',events:(w.hotEvents||[]).slice(0,3)});

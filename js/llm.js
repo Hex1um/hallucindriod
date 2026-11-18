@@ -257,7 +257,7 @@
     const isBrowser=id==='browser';
     const isTerminal=id==='terminal';
     // browser 生成完整官网 JSON 偏慢，但已精简字段；给 18s 窗口，超时再走备用源
-    const isWeb=(isBrowser||id==='websearch');
+    const isWeb=(isBrowser||id==='websearch'||id==='evolve');
     const heavy=isWeb?650:((id==='delivery'||id==='video'||id==='messages')?650:400);
     const ctx={sys:systemPrompt(conf,id),user:buildUserPrompt(id,name),temp:temperature(conf,id),maxTokens:heavy};
     // browser 要生成完整官网 JSON（约 15s），给足竞速窗口；
