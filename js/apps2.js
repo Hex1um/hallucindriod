@@ -477,6 +477,20 @@
         +'var t=setTimeout(function(){clearInterval(iv);thumb.textContent=emos[ei];scene.textContent=emos[ei];'
         +'cap.textContent="📷 '+caption+'";cap.classList.add("on")},1500)};'
         +'document.getElementById("flip").onclick=function(){scene.style.transform=scene.style.transform==="scaleX(-1)"?"none":"scaleX(-1)"};'
+        +'var FILTERS=["none","grayscale(1)","sepia(.75)","saturate(1.9)","hue-rotate(160deg)","contrast(1.35) brightness(1.1)"];'
+        +'var fi=0,shotCount=0;'
+        +'document.getElementById("thumb").onclick=function(){'
+        +'  fi=(fi+1)%FILTERS.length;'
+        +'  scene.style.filter=FILTERS[fi];'
+        +'  this.style.filter=FILTERS[fi];'
+        +'  cap.textContent="滤镜："+["原图","黑白","复古","鲜艳","冷调","高对比"][fi];'
+        +'  cap.classList.add("on");'
+        +'  setTimeout(function(){cap.classList.remove("on")},1200);'
+        +'};'
+        +'var sh=document.getElementById("shutter");'
+        +'sh.addEventListener("click",function(){shotCount++;setTimeout(function(){'
+        +'  cap.textContent="已保存到相册 · 第 "+shotCount+" 张";cap.classList.add("on");'
+        +'},1600)});'
     });
   };
 

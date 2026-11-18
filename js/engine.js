@@ -165,12 +165,14 @@
       ? Promise.resolve(null)
       : preload(id,name);
     await printCode(name,id,cached);
-    // 最多等 3.5s：超时先用本地内容把应用打开，LLM 结果留在缓存里供下次使用
+    // 等待上限：内置应用 3.5s；商店自装的通用应用只需 0.9s（本地模板已足够）
+    // 超时就用本地内容先把应用打开，LLM 结果留在缓存里供下次使用
+    const waitMs = inRegistry ? 3500 : 900;
     let llmData = null;
     try{
       llmData = await Promise.race([
         llmPromise,
-        new Promise(r=>setTimeout(()=>r(null),3500))
+        new Promise(r=>setTimeout(()=>r(null),waitMs))
       ]);
     }catch(e){ llmData=null; }
     // 追加内容来源状态行

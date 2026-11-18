@@ -99,32 +99,89 @@
   /* ---------- 天气：城市、天气、温度全现编 ---------- */
   B.weather = function(){
     const L=(typeof window.__LLM!=='undefined'&&window.__LLM)?window.__LLM:null;
-    const city = (L&&L.city)||pick(WORDS.cities), w = (L&&L.weather)||pick(WORDS.weather), emo = pick(WORDS.weatherEmoji);
-    const t = (L&&typeof L.temp==='number')?L.temp:randInt(-5,41), feel = t+randInt(-4,4);
-    const aqi = randInt(20,260), aqiTxt = aqi<50?'优':aqi<100?'良':aqi<150?'轻度污染':'重污染';
-    const days = Array.from({length:5},(_,i)=>{
-      const d=['今天','明天','后天','大后天','大大后天'][i];
-      const we=pick(WORDS.weather), e=pick(WORDS.weatherEmoji), hi=t+randInt(-3,5), lo=hi-randInt(6,12);
-      return '<div class="fc"><span>'+d+'</span><span>'+e+'</span><span class="muted">'+we+'</span><span>'+lo+'° ~ '+hi+'°</span></div>';
-    }).join('');
+    const baseCity=(L&&L.city)||pick(WORDS.cities);
+    const baseW=(L&&L.weather)||pick(WORDS.weather);
+    const t0=(L&&typeof L.temp==='number')?L.temp:randInt(-5,41);
+    // 准备 4 个城市的数据，切换时不重新请求
+    const others=pickN(WORDS.cities.filter(c=>c!==baseCity),3);
+    const cities=[baseCity].concat(others).map((c,i)=>{
+      const t=i===0?t0:randInt(-2,36);
+      const days=Array.from({length:5},(_,k)=>{
+        const d=['今天','明天','后天','周四','周五'][k];
+        const we=pick(WORDS.weather), e=pick(WORDS.weatherEmoji);
+        const hi=t+randInt(-2,6), lo=hi-randInt(6,11);
+        return {d:d,e:e,we:we,hi:hi,lo:lo,hum:randInt(30,92),wind:randInt(1,7),sun:randInt(4,9)};
+      });
+      return {city:c,t:t,w:i===0?baseW:pick(WORDS.weather),emo:i===0?pick(WORDS.weatherEmoji):pick(WORDS.weatherEmoji),
+        feel:t+randInt(-4,4),aqi:randInt(20,260),days:days,tip:i===0?((L&&L.tip)||''):''};
+    });
+    const dataJSON=JSON.stringify({cities:cities}).replace(/</g,'\\u003c');
+    const js = `var D=${dataJSON},cur=0;
+var box=document.getElementById('wxBox'),dtl=document.getElementById('wxDtl');
+function aqiTxt(a){return a<50?'优':a<100?'良':a<150?'轻度污染':'重污染'}
+function render(){
+  var c=D.cities[cur];
+  box.innerHTML='<div class="wx"><div class="cityrow"><button class="nav" id="wxPrev">‹</button>'
+    +'<div class="citywrap"><div class="city">'+c.city+'</div><div class="now">'+c.w+' · 卫星实时观测</div></div>'
+    +'<button class="nav" id="wxNext">›</button></div>'
+    +'<div class="big"><div class="e">'+c.emo+'</div><div class="t">'+c.t+'°</div>'
+    +'<div class="d">体感 '+c.feel+'°<br>'+c.w+'</div></div>'
+    +'<div class="aqi card"><span>空气质量 AQI <b>'+c.aqi+'</b></span><span>'+aqiTxt(c.aqi)+'</span></div>'
+    +'<div class="fcs card">'+c.days.map(function(d,i){
+        return '<div class="fc" data-d="'+i+'"><span>'+d.d+'</span><span>'+d.e+'</span>'
+          +'<span class="muted">'+d.we+'</span><span>'+d.lo+'° ~ '+d.hi+'°</span></div>';
+      }).join('')+'</div>'
+    +(c.tip?'<div class="tip" style="color:#c4b5fd">💡 '+c.tip+'</div>':'')
+    +'<div class="dotrow">'+D.cities.map(function(x,i){return '<i class="'+(i===cur?'on':'')+'"></i>'}).join('')+'</div>'
+    +'<div class="tip">左右切换城市 · 点某一天看详情</div></div>';
+  document.getElementById('wxPrev').onclick=function(){cur=(cur-1+D.cities.length)%D.cities.length;render()};
+  document.getElementById('wxNext').onclick=function(){cur=(cur+1)%D.cities.length;render()};
+  box.querySelectorAll('.fc').forEach(function(el){
+    el.onclick=function(){
+      var d=c.days[Number(this.getAttribute('data-d'))];
+      dtl.innerHTML='<div class="dtlcard"><h3>'+c.city+' · '+d.d+'</h3>'
+        +'<div class="drow"><span>天气</span><b>'+d.e+' '+d.we+'</b></div>'
+        +'<div class="drow"><span>气温</span><b>'+d.lo+'° ~ '+d.hi+'°</b></div>'
+        +'<div class="drow"><span>湿度</span><b>'+d.hum+'%</b></div>'
+        +'<div class="drow"><span>风力</span><b>'+d.wind+' 级</b></div>'
+        +'<div class="drow"><span>紫外线</span><b>'+['弱','中等','强','很强'][Math.min(3,Math.floor(d.sun/3))]+'</b></div>'
+        +'<button class="dclose" id="dclose">关闭</button></div>';
+      dtl.classList.add('on');
+      document.getElementById('dclose').onclick=function(){dtl.classList.remove('on')};
+    };
+  });
+}
+render();`;
+
     return shell({
       title:'天气', icon:'⛅', accent:'#38bdf8',
-      css:'.wx{padding:22px 20px;background:linear-gradient(170deg,#0c2a4a,#0a1526 70%);height:100%}'
-        +'.city{font-size:26px;font-weight:600}.now{font-size:13px;color:#9fb6d0;margin-top:2px}'
-        +'.big{display:flex;align-items:center;justify-content:space-between;margin:18px 0}'
-        +'.big .e{font-size:74px}.big .t{font-size:64px;font-weight:200;line-height:1}'
-        +'.big .d{text-align:right;font-size:13px;color:#9fb6d0}'
-        +'.aqi{display:flex;justify-content:space-between;padding:13px 16px;margin-bottom:16px}'
-        +'.fcs{padding:8px 16px}'
-        +'.fc{display:grid;grid-template-columns:56px 28px 1fr auto;align-items:center;gap:8px;padding:12px 2px;font-size:13px;border-bottom:1px solid rgba(255,255,255,.05)}'
-        +'.fc:last-child{border:none}.fc .muted{font-size:11px;text-align:right}'
-        +'.tip{margin-top:14px;font-size:11px;color:#7f93ab;text-align:center}',
-      html:'<div class="wx"><div class="city">'+city+'</div><div class="now">'+pick(WORDS.adjectives)+'天气 · 卫星实时观测</div>'
-        +'<div class="big"><div class="e">'+emo+'</div><div class="t">'+t+'°</div><div class="d">体感 '+feel+'°<br>'+w+'</div></div>'
-        +'<div class="aqi card"><span>空气质量 AQI <b>'+aqi+'</b></span><span>'+aqiTxt+'</span></div>'
-        +'<div class="fcs card">'+days+'</div>'
-        +(L&&L.tip?'<div class="tip" style="color:#c4b5fd">💡 '+L.tip+'</div>':'')
-        +'<div class="tip">数据来源：'+(L?'在线气象服务 · ':'本地气象数据 · ')+'更新于 '+randInt(1,9)+' 分钟前</div></div>'
+      css:'.wx{padding:20px;background:linear-gradient(170deg,#0c2a4a,#0a1526 70%);min-height:100%}'
+        +'.cityrow{display:flex;align-items:center;gap:6px}'
+        +'.citywrap{flex:1;text-align:center}'
+        +'.city{font-size:24px;font-weight:600}.now{font-size:12px;color:#9fb6d0;margin-top:2px}'
+        +'.nav{width:32px;height:32px;border-radius:50%;border:none;background:rgba(255,255,255,.1);color:#cfe3f7;font-size:18px;cursor:pointer;flex-shrink:0}'
+        +'.nav:active{background:rgba(255,255,255,.22)}'
+        +'.big{display:flex;align-items:center;justify-content:space-between;margin:14px 0}'
+        +'.big .e{font-size:70px}.big .t{font-size:62px;font-weight:200;line-height:1}'
+        +'.big .d{text-align:right;font-size:12.5px;color:#9fb6d0}'
+        +'.aqi{display:flex;justify-content:space-between;padding:13px 16px;margin-bottom:14px;font-size:12.5px}'
+        +'.fcs{padding:6px 14px}'
+        +'.fc{display:grid;grid-template-columns:52px 26px 1fr auto;align-items:center;gap:8px;padding:12px 2px;font-size:12.5px;border-bottom:1px solid rgba(255,255,255,.05);cursor:pointer}'
+        +'.fc:last-child{border:none}.fc:active{background:rgba(255,255,255,.05)}'
+        +'.fc .muted{font-size:11px;text-align:right;color:#8b90a5}'
+        +'.tip{margin-top:12px;font-size:11px;color:#7f93ab;text-align:center}'
+        +'.dotrow{display:flex;justify-content:center;gap:6px;margin-top:14px}'
+        +'.dotrow i{width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,.28)}'
+        +'.dotrow i.on{width:16px;background:#7dd3fc}'
+        +'.dtl{position:fixed;inset:0;background:rgba(6,12,22,.92);display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:.18s}'
+        +'.dtl.on{opacity:1;pointer-events:auto}'
+        +'.dtlcard{width:78%;background:#12233a;border:1px solid rgba(255,255,255,.12);border-radius:18px;padding:20px 18px}'
+        +'.dtlcard h3{margin:0 0 14px;font-size:15px}'
+        +'.drow{display:flex;justify-content:space-between;padding:9px 0;font-size:12.5px;color:#9fb6d0;border-bottom:1px solid rgba(255,255,255,.06)}'
+        +'.drow b{color:#e6eef8}.drow:last-of-type{border:none}'
+        +'.dclose{width:100%;margin-top:16px;border:none;border-radius:12px;padding:11px;background:rgba(255,255,255,.12);color:#fff;font-size:13px;cursor:pointer}',
+      html:'<div id="wxBox"></div><div class="dtl" id="wxDtl"></div>',
+      js:js
     });
   };
 
@@ -210,10 +267,42 @@
         +'.paper::before{content:"";position:absolute;top:-9px;left:50%;transform:translateX(-50%);width:90px;height:20px;background:rgba(255,255,255,.5);border-radius:3px}'
         +'.paper h2{font-size:17px;margin:0 0 16px}.paper p{font-size:15px;line-height:2;margin:0 0 12px;font-family:"Kaiti SC","STKaiti",serif}'
         +'.sig{text-align:right;font-size:12px;opacity:.7;margin-top:24px}'
-        +'.ntfoot{text-align:center;color:#7c8096;font-size:11px;margin-top:22px}',
-      html:'<div class="nt"><div class="paper"><h2>'+mood+' 一条便签</h2><p>'+noteText+'</p>'
-        +'<div class="sig">— 写于 '+sign+'</div></div>'
-        +'<div class="ntfoot">编辑于 '+new Date().toLocaleDateString('zh-CN')+' · 已保存到本机</div></div>'
+        +'.ntfoot{text-align:center;color:#7c8096;font-size:11px;margin-top:14px}'
+        +'.ntools{display:flex;gap:10px;justify-content:center;margin-top:14px}'
+        +'.ntools button{border:none;border-radius:12px;padding:10px 16px;font-size:12px;cursor:pointer;background:rgba(255,255,255,.1);color:#c9cad6}'
+        +'.ntools button.primary{background:#fbbf24;color:#3b2f12;font-weight:700}'
+        +'.ntools button:active{opacity:.8}'
+        +'.paper .meta{font-size:10px;opacity:.55;margin-top:6px}',
+      html:'<div class="nt"><div class="paper" id="paper"><h2 id="pTitle">'+mood+' 一条便签</h2>'
+        +'<p id="pBody">'+noteText+'</p><div class="sig" id="pSig">—— '+sign+'</div>'
+        +'<div class="meta" id="pMeta">1 / 1</div></div>'
+        +'<div class="ntools"><button id="nPrev">‹ 上一条</button>'
+        +'<button class="primary" id="nNew">＋ 新建</button>'
+        +'<button id="nDel">删除</button></div>'
+        +'<div class="ntfoot">便签内容由 AI 现编 · 点「新建」可以再写一张</div></div>',
+      js:'var NOTES=[{t:'+JSON.stringify(mood)+',b:'+JSON.stringify(noteText)+',s:'+JSON.stringify(sign)+'}];'
+        +'var cur=0;'
+        +'var IDEAS=["把今天的小事写下来","今天不想努力，只想晒太阳","记得给朋友回条消息","攒钱去看一次远方","把房间收拾干净，心情会好一点"];'
+        +'function esc3(s){return String(s==null?"":s).replace(/[&<>]/g,function(c){return ({"&":"&amp;","<":"&lt;",">":"&gt;"})[c]})}'
+        +'function draw(){'
+        +'  var n=NOTES[cur]||NOTES[0];'
+        +'  document.getElementById("pTitle").textContent=n.t+" 第 "+(cur+1)+" 张";'
+        +'  document.getElementById("pBody").textContent=n.b;'
+        +'  document.getElementById("pSig").textContent="—— "+n.s;'
+        +'  document.getElementById("pMeta").textContent=(cur+1)+" / "+NOTES.length;'
+        +'}'
+        +'document.getElementById("nPrev").onclick=function(){if(NOTES.length<2)return;cur=(cur-1+NOTES.length)%NOTES.length;draw()};'
+        +'document.getElementById("nNew").onclick=function(){'
+        +'  var idea=IDEAS[NOTES.length%IDEAS.length];'
+        +'  NOTES.push({t:"✎",b:idea+"。",s:"我"});'
+        +'  cur=NOTES.length-1;draw();'
+        +'  var p=document.getElementById("paper");p.style.transform="rotate("+(Math.random()*4-2).toFixed(1)+"deg)";'
+        +'};'
+        +'document.getElementById("nDel").onclick=function(){'
+        +'  if(NOTES.length<2){NOTES=[{t:"✎",b:"（空便签）",s:"我"}];cur=0;draw();return}'
+        +'  NOTES.splice(cur,1);if(cur>=NOTES.length)cur=NOTES.length-1;draw();'
+        +'};'
+        +'draw();'
     });
   };
 
@@ -368,7 +457,7 @@
     const p=neonPalette();
     let roads='';
     for(let i=0;i<7;i++){const x=randInt(5,90),y=randInt(5,90),w=randInt(20,60);roads+='<div class="road" style="left:'+x+'%;top:'+y+'%;width:'+w+'%;transform:rotate('+randInt(0,180)+'deg)"></div>'}
-    const pins=marks.map((m,i)=>'<div class="pin" style="left:'+[22,68,38,78][i]+'%;top:'+[28,22,64,70][i]+'%">📍<span>'+m+'</span></div>').join('');
+    const pins=marks.map((m,i)=>'<div class="pin" data-i="'+i+'" style="left:'+[22,68,38,78][i]+'%;top:'+[28,22,64,70][i]+'%">📍<span>'+m+'</span></div>').join('');
     return shell({
       title:'地图', icon:'🗺️', accent:'#34d399',
       css:'.mp{height:100%;display:flex;flex-direction:column}'
@@ -381,14 +470,54 @@
         +'.pin span{position:absolute;left:20px;top:-2px;white-space:nowrap;font-size:10px;background:rgba(0,0,0,.6);padding:3px 6px;border-radius:6px;color:#fff}'
         +'.route{margin:0 16px 16px;padding:14px 16px;font-size:12px}'
         +'.route b{color:#6ee7b7}'
-        +'.go{display:block;width:100%;margin-top:12px;border:none;border-radius:12px;padding:11px;background:#34d399;color:#062a20;font-weight:700;cursor:pointer}',
-      html:'<div class="mp"><div class="msearch">🔍 搜索「'+city+'」· 或直接开始导航</div>'
+        +'.go{display:block;width:100%;margin-top:12px;border:none;border-radius:12px;padding:11px;background:#34d399;color:#062a20;font-weight:700;cursor:pointer}'
+        +'.pin{cursor:pointer}.pin:active{transform:translate(-50%,-100%) scale(1.18)}'
+        +'.msearch{cursor:pointer}.msearch:active{background:rgba(255,255,255,.14)}'
+        +'.msh{position:fixed;inset:0;background:rgba(6,14,12,.94);z-index:70;display:flex;flex-direction:column;transform:translateY(100%);transition:.22s}'
+        +'.msh.on{transform:none}'
+        +'.mshh{height:50px;display:flex;align-items:center;gap:10px;padding:0 14px;border-bottom:1px solid rgba(255,255,255,.07)}'
+        +'.mshh button{border:none;background:none;color:#6ee7b7;font-size:23px;cursor:pointer}'
+        +'.mshh b{font-size:14px}'
+        +'.mshb{flex:1;overflow-y:auto;padding:16px}'
+        +'.mrow{display:flex;justify-content:space-between;padding:14px 2px;border-bottom:1px solid rgba(255,255,255,.06);font-size:13px;cursor:pointer}'
+        +'.mrow:active{background:rgba(255,255,255,.05)}'
+        +'.mrow small{color:#7f93ab;font-size:11px}'
+        +'.mshnote{color:#7f93ab;font-size:11px;margin-top:16px;text-align:center}',
+      html:'<div class="mp"><div class="msearch" id="msearch">🔍 搜索「'+city+'」· 或直接开始导航</div>'
         +'<div class="mcanvas"><div class="river"></div>'+roads+pins+'</div>'
-        +'<div class="route card">🛰️ 已定位到 <b>'+city+'</b> · 途经 '+marks[0]+' → '+marks[1]
+        +'<div class="route card" id="mroute">🛰️ 已定位到 <b>'+city+'</b> · 途经 '+marks[0]+' → '+marks[1]
         +'<br><span class="muted">全程 '+randInt(2,88)+' 公里，预计 '+randInt(5,120)+' 分钟（路况纯属虚构）</span>'
-        +'<button class="go" id="go">开始导航</button></div></div>',
-      js:'document.getElementById("go").onclick=function(){this.textContent="导航中… 前方左转进入"+'+JSON.stringify(pick(WORDS.landmarks))+';'
-        +'var self=this;setTimeout(function(){self.textContent="已到达（大概）"},2200)};'
+        +'<button class="go" id="go">开始导航</button></div></div>'
+        +'<div class="msh" id="msh"></div>',
+      js:'var MARKS='+JSON.stringify(marks)+',CITY='+JSON.stringify(city)+';'
+        +'var msh=document.getElementById("msh"),route=document.getElementById("mroute");'
+        +'function esc2(s){return String(s==null?"":s).replace(/[&<>]/g,function(c){return ({"&":"&amp;","<":"&lt;",">":"&gt;"})[c]})}'
+        +'document.querySelectorAll(".pin").forEach(function(p){'
+        +'  p.onclick=function(ev){ev.stopPropagation();'
+        +'    var i=Number(this.getAttribute("data-i")),name=MARKS[i]||"地点";'
+        +'    var dist=(1+i*1.7).toFixed(1),rate=(4.2+i*0.2).toFixed(1);'
+        +'    route.innerHTML="📍 <b>"+esc2(name)+"</b><br><span class=muted>距你 "+dist+" 公里 · ★ "+rate+" · 人气第"+(i+1)+"</span>"'
+        +'      +"<button class=go id=go>导航到这里</button>";'
+        +'    bindGo();'
+        +'  };'
+        +'});'
+        +'function bindGo(){'
+        +'  var b=document.getElementById("go"); if(!b)return;'
+        +'  b.onclick=function(){var t=this;t.textContent="导航中… 前方路口右转";setTimeout(function(){t.textContent="已到达（大概）"},2200)};'
+        +'}'
+        +'bindGo();'
+        +'document.getElementById("msearch").onclick=function(){'
+        +'  msh.innerHTML="<div class=mshh><button id=mshbk>\u2039</button><b>选择目的地</b></div>"'
+        +'    +"<div class=mshb>"+MARKS.map(function(m,i){return "<div class=mrow data-i="+i+"><span>"+esc2(m)+"</span><small>"+(1+i*1.7).toFixed(1)+" km</small></div>"}).join("")'
+        +'    +"<div class=mshnote>更多地点由地图服务实时生成</div></div>";'
+        +'  msh.classList.add("on");'
+        +'  document.getElementById("mshbk").onclick=function(){msh.classList.remove("on")};'
+        +'  msh.querySelectorAll(".mrow").forEach(function(r){r.onclick=function(){'
+        +'    var i=Number(this.getAttribute("data-i"));'
+        +'    route.innerHTML="📍 <b>"+esc2(MARKS[i])+"</b><br><span class=muted>已在路线中 · 全程 "+(3+i*4)+" 公里</span><button class=go id=go>开始导航</button>";'
+        +'    bindGo(); msh.classList.remove("on");'
+        +'  }});'
+        +'};'
     });
   };
 
