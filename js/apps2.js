@@ -203,6 +203,42 @@
     return out;
   }
 
+  // 本地兜底网站：输入任何域名都能"访问"，内容与域名相关
+  function fallbackSite(topic){
+    var raw=String(topic||'').replace(/^https?:\/\//i,'').replace(/[\/?#].*$/,'').replace(/^www\./i,'');
+    var seg=raw.split('.')[0]||raw||'site';
+    var name=seg.replace(/[-_]/g,' ').toUpperCase();
+    var tld=(raw.split('.').pop()||'').toLowerCase();
+    var kind=tld==='gov'?'官方门户':(tld==='edu'?'学术站点':(tld==='org'?'机构主页':'官方网站'));
+    var kwLower=seg.toLowerCase();
+    var themes=[
+      ['把复杂的事说得简单一点','我们不追求热闹，只想把每件事做扎实。'],
+      ['一个人的小站，偶尔更新','想到什么写什么，看得懂就够了。'],
+      ['关于「'+seg+'」你需要知道的','这块地方还很小，但内容都是真的。'],
+      ['从这里开始了解我们','成立那天没有人拍照，所以没有照片。']
+    ];
+    var h=0;for(var i=0;i<raw.length;i++)h=(h*31+raw.charCodeAt(i))>>>0;
+    var th=themes[h%themes.length];
+    return {
+      siteName:name,
+      type:'company',
+      tagline:kind+' · '+th[0],
+      heroTitle:name,
+      heroSub:th[1],
+      cta:'了解更多',
+      features:[
+        {icon:'✦',title:'我们在做什么',desc:'把想法做成能用的东西'},
+        {icon:'◈',title:'为什么这样做',desc:'因为总得有人先试一次'},
+        {icon:'◇',title:'怎么联系',desc:'发消息通常比打电话快'}
+      ],
+      stats:[{num:String(2015+(h%9)),label:'成立'},{num:String(3+(h%40)),label:'成员'},{num:String(5+(h%20)),label:'项目'}],
+      aboutTitle:'关于 '+name,
+      about:[name+' 最初只有一张桌子、一台旧电脑，和一个不太成熟的想法。',
+             '现在它依然不大，但已经能自己运转了。这里写下的每句话，都是真的（大概）。'],
+      news:['我们更新了首页','一次小规模的改版','关于最近的一些想法']
+    };
+  }
+
   function renderSearchResults(d){
     d=d||{};
     function esc(v){return String(v==null?'':v).replace(/[&<>"']/g,function(c){return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]})}
@@ -227,7 +263,7 @@
 
   /* ---------- 浏览器：新标签搜索页 → 输入后由 LLM 生成网页 ---------- */
   B.browser = function(){
-    var renderSrc=[renderSiteHTML,renderSearchResults,fallbackResults,sitePalette].map(function(f){return f.toString()}).join('\n');
+    var renderSrc=[renderSiteHTML,renderSearchResults,fallbackResults,fallbackSite,sitePalette].map(function(f){return f.toString()}).join('\n');
     var siteCSS='.site{font-family:-apple-system,"PingFang SC",sans-serif;background:#fff;color:#1a1a24}'
       +'.wnav{display:flex;justify-content:space-between;align-items:center;padding:15px 18px;background:#fff;border-bottom:1px solid #eee;position:sticky;top:0;z-index:5}'
       +'.wbrand{font-weight:800;font-size:15px;color:#222}'
@@ -411,7 +447,9 @@
         +'  curTopic=topic;curKind=asUrl?"site":"search";urlIn.value=asUrl?prettyUrl(topic):topic;'
         +'  if(push){hist=hist.slice(0,hi+1);hist.push(topic);hi=hist.length-1}'
         +'  if(asUrl){'
-        +'    web.innerHTML=renderSiteHTML({siteName:brandOf(topic),tagline:"正在载入…",heroTitle:brandOf(topic),heroSub:"页面内容正在生成，稍候将自动更新。",about:"内容正在生成中，请稍候片刻。"});'
+        // 先用本地兜底把页面渲染出来 → 任何域名都"能访问"，模型数据到了再替换
+        +'    web.innerHTML=renderSiteHTML(fallbackSite(topic));'
+        +'    bindSite();web.scrollTop=0;'
         +'  }else{'
         +'    web.innerHTML=renderSearchResults({query:topic,total:"正在检索…",results:[]});'
         +'  }'
@@ -432,9 +470,14 @@
         +'  }'
         +'  if(d&&d.siteName){curTopic=d.siteName;web.innerHTML=renderSiteHTML(d);'
         +'    parent.postMessage({type:"webstate",topic:curTopic,data:d},"*")}'
-        +'  else{'
-        +'    web.innerHTML=renderError(prettyUrl(curTopic));'
-        +'    var rb=document.getElementById("retry");if(rb)rb.onclick=function(){nav(curTopic,false)};'
+        +'  else if(curKind==="search"){'
+        +'    web.innerHTML=renderSearchResults({query:curTopic,results:fallbackResults(curTopic)});'
+        +'    web.querySelectorAll(".sr").forEach(function(r){r.onclick=function(){var u=this.getAttribute("data-url");if(u)nav(u,true)}});'
+        +'  }'
+        +'  else if(curKind==="site"){'
+        // 模型没返回 → 保持本地兜底网站（看起来仍然是"正常访问"），不弹错误页
+        +'    var fb=fallbackSite(curTopic);'
+        +'    web.innerHTML=renderSiteHTML(fb);'
         +'  }'
         +'  bindSite();web.scrollTop=0;'
         +'});'
