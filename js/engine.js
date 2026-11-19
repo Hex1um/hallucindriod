@@ -829,6 +829,18 @@
     return true;
   }
 
+  // 拉取公共池（有后端才生效）
+  async function fetchPool(){
+    const remote=(D.CONFIG&&D.CONFIG.poolUrl)||'';
+    if(!remote)return [];
+    try{
+      const r=await fetch(remote+'?t='+Date.now(),{cache:'no-store'});
+      if(!r.ok)return [];
+      const j=await r.json();
+      return Array.isArray(j&&j.videos)?j.videos.slice(0,20):[];
+    }catch(e){ return [] }
+  }
+
   // ---------- 世界演化：让城市有"过去"（playbook ⑪） ----------
   async function evolveWorld(){
     const D=window.OS_DATA;
@@ -948,6 +960,7 @@
     webgen:'browser', websearch:'browser', webstate:'browser',
     termgen:'terminal',
     musicsearch:'music', tone:'music',
+    videogen:'video', publishVideo:'video',
     'social:register':'messages', 'social:save':'messages', 'social:probe':'messages',
     'social:addfriend':'messages', 'social:reply':'messages'
   };
@@ -1042,6 +1055,49 @@
       setWebState(null);
       if(window.HOS&&window.HOS.toast)window.HOS.toast('世界已重置 · '+(w?w.city:'新城'));
     }
+    else if(e.data.type==='videogen'){
+      // 短视频无限流：按需再生成一批（带上已出现过的标题避免重复）
+      const seen=Array.isArray(e.data.seen)?e.data.seen.slice(-12):[];
+      const req=e.data.req;
+      const theme=String(e.data.theme||'短视频')+(seen.length?('（不要和这些重复：'+seen.join('、')+'）'):'');
+      Promise.resolve()
+        .then(()=>window.LLM?window.LLM.fetchHallucination('video',theme):null)
+        .catch(()=>null)
+        .then(d=>{
+          try{ frame&&frame.contentWindow&&frame.contentWindow.postMessage({type:'videodata',data:d,req:req},'*') }catch(err){}
+        });
+    }
+    else if(e.data.type==='publishVideo'){
+      // 用户发布的视频进本地池，并尝试广播给在线好友
+      const v=e.data.video||{};
+      let pool=[];
+      try{ pool=JSON.parse(localStorage.getItem('hallucindriod_pool_v1')||'[]') }catch(err){}
+      if(!Array.isArray(pool))pool=[];
+      const item={
+        id:'u_'+Date.now().toString(36),
+        title:String(v.title||'无题').slice(0,30),
+        up:'@'+((window.OS_DATA&&window.OS_DATA.loadIdentity&&window.OS_DATA.loadIdentity().name)||'我'),
+        desc:String(v.desc||'').slice(0,60),
+        style:String(v.style||'night'),music:'原声',
+        likes:0,shares:0,
+        mine:true,ts:Date.now(),
+        comments:Array.isArray(v.comments)?v.comments.slice(0,3):[]
+      };
+      pool.unshift(item);
+      pool=pool.slice(0,60);
+      try{ localStorage.setItem('hallucindriod_pool_v1',JSON.stringify(pool)) }catch(err){}
+      if(window.HOS&&window.HOS.toast)window.HOS.toast('已发布 · 别人可能刷到');
+      // 配置了公共池后端 → 同步上去，别人也能刷到
+      const remote=(D.CONFIG&&D.CONFIG.poolUrl)||'';
+      if(remote){
+        fetch(remote,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'publish',video:item})})
+          .then(r=>r.ok?r.json():null)
+          .then(res=>{ if(res&&res.ok&&window.HOS&&window.HOS.toast)window.HOS.toast('已同步到公共池') })
+          .catch(()=>{ if(window.HOS&&window.HOS.toast)window.HOS.toast('同步失败，已存本地') });
+      }
+      if(window.P2P&&window.P2P.broadcast){ try{ window.P2P.broadcast({t:'pool',video:item}) }catch(err){} }
+      try{ frame.contentWindow.postMessage({type:'published',video:item},'*') }catch(err){}
+    }
     else if(e.data.type==='openSettings'){
       closeApp();
       setTimeout(()=>{ try{ openApp('settings','设置') }catch(err){} },120);
@@ -1086,7 +1142,7 @@
     }
   });
 
-  window.ENGINE={openApp,closeApp,regen,warmup,refreshData,preload,hasCache,openExternal,openFromDNA,shareCurrent,buildShareLink,evolveWorld,
+  window.ENGINE={openApp,closeApp,regen,warmup,refreshData,preload,hasCache,openExternal,openFromDNA,shareCurrent,buildShareLink,evolveWorld,fetchPool,
     cacheStatus(){ return {cached:Object.keys(dataCache),pending:Object.keys(pending),queue:prefetchQueue.slice()}; }};
   bindP2PInbox();
   // 已注册用户：启动时自动上线

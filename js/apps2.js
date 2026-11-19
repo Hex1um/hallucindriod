@@ -1373,6 +1373,9 @@ render();`;
         +'<div class="grp card"><div class="gl">🖥️ 桌面</div>'
         +'<div class="refresh-head"><span>已从桌面移除的应用</span><button class="rall" id="restoreApps">全部恢复</button></div>'
         +'<div class="rrow"><span class="rname" style="color:#6f7488;font-size:11px">长按桌面图标可编辑：拖动排序、点左上角 × 移除</span></div></div>'
+        +'<div class="grp card"><div class="gl">📡 短视频公共池</div>'
+        +'<div style="padding:0 14px 14px"><input id="poolUrl" placeholder="留空则只用本地池" value="'+String((window.OS_DATA&&window.OS_DATA.CONFIG&&window.OS_DATA.CONFIG.poolUrl)||'').replace(/"/g,'&quot;')+'" style="width:100%;box-sizing:border-box;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);border-radius:10px;padding:10px 12px;color:#fff;font-size:11.5px;outline:none">'
+        +'<div class="whint">填一个自己部署的接口地址，就能和别人共用视频池。留空时只在本机保存，别人刷不到。</div></div></div>'
         +'<div class="grp card"><div class="gl">🔄 数据刷新</div>'
         +'<div class="refresh-head"><span>重新生成应用内容</span><button class="rall" id="refreshAll">刷新全部</button></div>'
         +refreshRows+'</div>'
@@ -1396,6 +1399,9 @@ render();`;
         +'document.querySelectorAll(".avp").forEach(function(b){b.onclick=function(){'
         +'document.querySelectorAll(".avp").forEach(function(x){x.classList.remove("on")});this.classList.add("on");'
         +'pendingAv=this.getAttribute("data-a");document.getElementById("idAv").textContent=pendingAv;}});'
+        +'(function(){var pu=document.getElementById("poolUrl");if(!pu)return;'
+        +'pu.onchange=function(){parent.postMessage({type:"config",cfg:{poolUrl:this.value.trim()}},"*")};'
+        +'})();'
         +'document.getElementById("idSave").onclick=function(){'
         +'var nm=(document.getElementById("idName").value||"").trim();'
         +'if(!nm){if(window.toast)toast("请输入名字");return}'
@@ -2007,6 +2013,18 @@ render();`;
         };
       });
     }
+    // 混入本地公共池（自己发布过的 + 从在线好友收到的）
+    try{
+      const pool=JSON.parse(localStorage.getItem('hallucindriod_pool_v1')||'[]');
+      if(Array.isArray(pool)&&pool.length){
+        const mine=pool.slice(0,6).map(x=>({
+          title:x.title,up:x.up,desc:x.desc,style:x.style||'night',
+          music:'原声',likes:Number(x.likes)||0,shares:Number(x.shares)||0,
+          comments:Array.isArray(x.comments)?x.comments:[],mine:!!x.mine
+        }));
+        vids=mine.concat(vids);
+      }
+    }catch(e){}
     vids=vids.map((v,i)=>{
       const style=STYLES.indexOf(String(v.style))>=0?String(v.style):STYLES[i%STYLES.length];
       const cs=Array.isArray(v.comments)?v.comments:[];
@@ -2129,7 +2147,96 @@ function renderVideo(){
   document.getElementById('vdCmtN').textContent=fmt(v.comments.length*37);
   document.getElementById('vdLike').classList.toggle('on',!!loved[idx]);
 }
-function nextVideo(dir){idx=(idx+dir+D.videos.length)%D.videos.length;step=0;renderVideo()}
+var loadingMore=false,reqSeq=0,pendingReq=0,autoAdvance=false;
+function loadMore(){
+  if(loadingMore)return;
+  loadingMore=true;
+  reqSeq++;pendingReq=reqSeq;
+  var seen=D.videos.map(function(v){return v.title}).slice(-10);
+  parent.postMessage({type:'videogen',seen:seen,req:reqSeq,theme:'短视频'},'*');
+  showLoading(true);
+}
+function showLoading(on){
+  var el=document.getElementById('vdLoading');
+  if(!el)return;
+  el.style.opacity=on?'1':'0';
+}
+function appendVideos(list){
+  if(!Array.isArray(list)||!list.length)return;
+  var ST=['night','nature','food','cat','tech','rain'];
+  list.forEach(function(v,i){
+    if(!v||!v.title)return;
+    var style=ST.indexOf(String(v.style))>=0?String(v.style):ST[(D.videos.length+i)%ST.length];
+    var cs=Array.isArray(v.comments)?v.comments:[];
+    D.videos.push({
+      title:String(v.title).slice(0,40),
+      up:String(v.up||'@创作者').slice(0,18),
+      desc:String(v.desc||'').slice(0,60),
+      style:style,music:String(v.music||'原声').slice(0,18),
+      likes:Number(v.likes)||Math.floor(Math.random()*90000+800),
+      shares:Number(v.shares)||Math.floor(Math.random()*2000+20),
+      comments:cs.slice(0,6).map(function(c){
+        return {user:String((c&&c.user)||'网友').slice(0,14),
+          text:String((c&&c.text)||'说点什么').slice(0,60),
+          likes:Number(c&&c.likes)||Math.floor(Math.random()*900+5),
+          reply:(c&&c.reply)?String(c.reply).slice(0,40):null,
+          loc:String((c&&c.loc)||'广东')};
+      })
+    });
+  });
+}
+// 父窗口回传新一批
+window.addEventListener('message',function(e){
+  if(!e.data)return;
+  if(e.data.type==='videodata'){
+    showLoading(false);loadingMore=false;
+    var before=D.videos.length;
+    if(e.data.data&&Array.isArray(e.data.data.videos))appendVideos(e.data.data.videos);
+    else appendVideos(localFallback());
+    if(autoAdvance&&D.videos.length>before){autoAdvance=false;idx=before;step=0;renderVideo()}
+    else if(autoAdvance){autoAdvance=false;window.__tapTip&&window.__tapTip('暂时没有更多了')}
+    return;
+  }
+  if(e.data.type==='published'){
+    // 自己发布的视频插到最前面
+    if(e.data.video){
+      var v=e.data.video;
+      D.videos.unshift({title:v.title,up:v.up,desc:v.desc,style:v.style||'night',
+        music:'原声',likes:0,shares:0,comments:v.comments||[],mine:true});
+      idx=0;renderVideo();
+    }
+    return;
+  }
+});
+// 本地兜底：LLM 不可用时也要能一直刷
+function localFallback(){
+  var ST=['night','nature','food','cat','tech','rain'];
+  var T=['凌晨的街道','山里的风','一碗热汤','窗台上的猫','代码又跑通了','雨还在下',
+         '地铁末班车','便利店关东煮','旧照片','楼下的树','深夜电台','一封没寄出的信'];
+  var U=['@路人甲','@夜里散步','@不太会拍','@随手记录','@今天也在'];
+  return Array.from({length:4},function(_,i){
+    return {title:T[Math.floor(Math.random()*T.length)],
+      up:U[Math.floor(Math.random()*U.length)],
+      desc:'随手拍的，没什么特别的',
+      style:ST[Math.floor(Math.random()*ST.length)],
+      likes:Math.floor(Math.random()*50000+200),
+      comments:[{user:'网友',text:'路过看看',likes:Math.floor(Math.random()*300+3),loc:'广东'}]};
+  });
+}
+function nextVideo(dir){
+  var n=idx+dir;
+  if(n<0){idx=D.videos.length-1;step=0;renderVideo();return}
+  if(n>=D.videos.length){
+    // 到底了：请求新一批，等数据到了再自动前进
+    autoAdvance=true;
+    idx=D.videos.length-1;
+    loadMore();
+    return;
+  }
+  idx=n;step=0;renderVideo();
+  // 快到底时预取
+  if(D.videos.length-idx<=2)loadMore();
+}
 function openComments(){
   var v=D.videos[idx];
   var rows=v.comments.map(function(c,i){
@@ -2234,6 +2341,35 @@ function renderMe(){
     parent.postMessage({type:'openSettings'},"*");
   };
 }
+function openPublish(){
+  pageBox.style.display='block';stage.style.display='none';
+  var STY=[['night','夜景'],['nature','风景'],['food','美食'],['cat','萌宠'],['tech','科技'],['rain','雨天']];
+  pageBox.innerHTML='<div class="mpage"><div class="mph">发布视频</div>'
+    +'<div class="pform">'
+    +'<input id="pvTitle" placeholder="给这段视频起个名字" maxlength="30">'
+    +'<input id="pvDesc" placeholder="说点什么（可选）" maxlength="60">'
+    +'<div class="pstl">画面风格</div>'
+    +'<div class="pstyles">'+STY.map(function(x,i){return '<button class="pst'+(i===0?' on':'')+'" data-s="'+x[0]+'">'+x[1]+'</button>'}).join('')+'</div>'
+    +'<button class="pbtn2" id="pvGo">发布</button>'
+    +'<div class="pnote">发布后会进入公共池，别人刷视频时可能刷到（当前为本地+在线好友同步）</div>'
+    +'</div></div>';
+  var cur='night';
+  pageBox.querySelectorAll('.pst').forEach(function(b){
+    b.onclick=function(){
+      pageBox.querySelectorAll('.pst').forEach(function(x){x.classList.remove('on')});
+      this.classList.add('on');cur=this.getAttribute('data-s');
+    };
+  });
+  document.getElementById('pvGo').onclick=function(){
+    var t=(document.getElementById('pvTitle').value||'').trim();
+    if(!t){window.__tapTip&&window.__tapTip('先起个名字');return}
+    var d=(document.getElementById('pvDesc').value||'').trim();
+    parent.postMessage({type:'publishVideo',video:{title:t,desc:d,style:cur,comments:[]}},'*');
+    this.textContent='已发布';
+    var self=this;
+    setTimeout(function(){self.textContent='发布';switchTab('home')},900);
+  };
+}
 function switchTab(tab){
   document.querySelectorAll('#vdTabs .vtab').forEach(function(b){b.classList.toggle('on',b.getAttribute('data-t')===tab)});
   if(tab==='home'){pageBox.style.display='none';stage.style.display='block';return}
@@ -2241,7 +2377,7 @@ function switchTab(tab){
   if(tab==='msg')renderMessages();
   else if(tab==='me')renderMe();
   else if(tab==='friend')pageBox.innerHTML='<div class="mpage"><div class="mph">朋友</div><div class="meempty">还没有朋友发过视频</div></div>';
-  else pageBox.innerHTML='<div class="mpage"><div class="mph">发布</div><div class="meempty">拍一段试试（大概）</div></div>';
+  else openPublish();
 }
 document.querySelectorAll('#vdTabs .vtab').forEach(function(b){b.onclick=function(){switchTab(this.getAttribute('data-t'))}});
 pageBox.style.display='none';
@@ -2289,6 +2425,20 @@ renderVideo();`;
         +'border-radius:50%;background:rgba(0,0,0,.45);color:#fff;font-size:24px;display:flex;align-items:center;justify-content:center;'
         +'opacity:0;pointer-events:none;transition:.2s;z-index:7}'
         +'.vd-pause.on{opacity:1;transform:translate(-50%,-50%) scale(1)}'
+        +'.vd-loading{position:absolute;left:50%;bottom:86px;transform:translateX(-50%);font-size:11px;color:rgba(255,255,255,.7);'
+        +'background:rgba(0,0,0,.55);padding:6px 14px;border-radius:999px;opacity:0;transition:.25s;z-index:9;pointer-events:none}'
+        +'.pform{padding:6px 2px}'
+        +'.pform input{width:100%;box-sizing:border-box;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);'
+        +'border-radius:12px;padding:13px 14px;color:#fff;font-size:13px;outline:none;margin-bottom:10px}'
+        +'.pform input::placeholder{color:#6f7488}'
+        +'.pstl{font-size:11.5px;color:#8b90a5;margin:6px 0 8px}'
+        +'.pstyles{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px}'
+        +'.pst{border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.05);color:#c9cad6;font-size:12px;'
+        +'padding:9px 15px;border-radius:999px;cursor:pointer}'
+        +'.pst.on{background:rgba(254,44,85,.25);border-color:rgba(254,44,85,.6);color:#fff;font-weight:600}'
+        +'.pbtn2{width:100%;border:none;border-radius:14px;padding:15px;background:linear-gradient(135deg,#fe2c55,#e11d48);'
+        +'color:#fff;font-size:15px;font-weight:800;cursor:pointer}'
+        +'.pnote{font-size:10.5px;color:#5f6478;line-height:1.7;margin-top:12px;text-align:center}'
         +'.vd-hintbar{position:absolute;left:0;right:0;bottom:62px;text-align:center;font-size:10.5px;'
         +'color:rgba(255,255,255,.3);z-index:5;pointer-events:none;transition:opacity .4s}'
         +'.vd-page{position:absolute;inset:0 0 56px 0;background:#0f1117;overflow-y:auto;z-index:8}'
@@ -2339,6 +2489,7 @@ renderVideo();`;
         +'<div class="vtab plus" data-t="plus"><span>＋</span></div>'
         +'<div class="vtab" data-t="msg">消息<i class="dot">15</i></div><div class="vtab" data-t="me">我</div></div>'
         +'<div class="vd-pause" id="vdPause">▶</div>'
+        +'<div class="vd-loading" id="vdLoading">正在生成下一条…</div>'
         +'<div class="vd-hintbar">上滑看下一条 · 短按暂停</div>'
         +'</div>',
       js:js
