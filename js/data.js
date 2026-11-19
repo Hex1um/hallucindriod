@@ -153,7 +153,7 @@ function _genWorld(){
     _pick(WORDS.landmarks||['老码头'])+'的霓虹灯昨晚集体熄灭了十分钟',
     _pick(WORDS.weatherEmoji)+' '+_pick(WORDS.weather)+'，气象台说这不正常',
     '有人在'+_pick(WORDS.cities)+'上空看见了'+_pick(WORDS.adjectives)+'的云',
-    _pick(WORDS.contacts||['小林'])+'在广场竖了一块会说话的牌子'
+    '有人在广场竖了一块会说话的牌子'
   ];
   return {
     city:city,

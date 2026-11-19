@@ -942,6 +942,7 @@
     config:'settings', refresh:'settings', restoreApps:'settings',
     'world:reset':'settings', 'persona:set':'settings', 'world:evolve':'settings',
     'identity:set':'settings', 'identity:random':'settings',
+    openSettings:'__any__',
     install:'store', storegen:'store', openapp:'store',
     regen:'__self__',
     webgen:'browser', websearch:'browser', webstate:'browser',
@@ -959,7 +960,7 @@
     // ③ 特权指令必须由对应的应用发出
     const owner=PRIV_OWNER[e.data.type];
     if(owner==='__self__'){ if(!currentId)return; }        // 只能对当前应用自身操作
-    else if(owner&&currentId!==owner)return;
+    else if(owner!=='__any__'&&owner&&currentId!==owner)return;
     if(e.data.type==='close')closeApp();
     else if(e.data.type==='regen')regen();
     else if(e.data.type==='webgen')llmGen('browser',e.data.topic||'幻卓空间',e.data.nonce);
@@ -1040,6 +1041,10 @@
       Object.keys(viewCache).forEach(k=>delete viewCache[k]);
       setWebState(null);
       if(window.HOS&&window.HOS.toast)window.HOS.toast('世界已重置 · '+(w?w.city:'新城'));
+    }
+    else if(e.data.type==='openSettings'){
+      closeApp();
+      setTimeout(()=>{ try{ openApp('settings','设置') }catch(err){} },120);
     }
     else if(e.data.type==='identity:set'||e.data.type==='identity:random'){
       const Dd=window.OS_DATA;

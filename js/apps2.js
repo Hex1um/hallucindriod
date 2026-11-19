@@ -805,7 +805,7 @@ function renderRegister(){
 function renderMain(){
   var f=S.friends||[];
   var unreadAll=f.reduce(function(a,x){return a+(Number(x.unread)||0)},0);
-  var myName=(S.profile&&S.profile.name)||'我';
+  var myName=(S.profile&&S.profile.name)||'未设置';
   var rows='';
   if(!f.length){
     rows='<div class="qempty"><div class="ic">👥</div><b>还没有好友</b>'
@@ -1956,8 +1956,8 @@ document.querySelectorAll('.db').forEach(function(b){
     if(k==='plus'){sheet('发布','拍摄短视频<br>上传本地视频<br>开直播');return}
     if(k==='home'){document.querySelectorAll('.db').forEach(function(x){x.classList.remove('on')});this.classList.add('on');render();return}
     if(k==='friends'){sheet('朋友','暂无好友动态<br><br>去消息页添加好友，就能看到他们的分享');return}
-    if(k==='msg'){sheet('消息','互动消息 3<br>· 有人赞了你的视频<br>· 有人评论了你');return}
-    if(k==='me'){sheet('我','👤 幻卓用户<br>作品 0 · 喜欢 12<br>关注 8 · 粉丝 3');return}
+    if(k==='msg'){sheet('消息','还没有消息<br><br>关注一些人，这里就会有互动');return}
+    if(k==='me'){sheet('我','未设置身份<br><br>去设置里取个名字');return}
   };
 });
 render();`;
@@ -2149,50 +2149,90 @@ function openComments(){
 document.getElementById('vdLike').onclick=function(){loved[idx]=!loved[idx];renderVideo()};
 document.getElementById('vdCmtBtn').onclick=openComments;
 document.getElementById('vdShare').onclick=function(){window.__tapTip&&window.__tapTip('已复制链接（大概）')};
-document.getElementById('vdNext').onclick=function(){nextVideo(1)};
-document.getElementById('vdPrev').onclick=function(){nextVideo(-1)};
-var touchY=0;
-stage.addEventListener('touchstart',function(e){touchY=e.touches[0].clientY},{passive:true});
-stage.addEventListener('touchend',function(e){var dy=touchY-e.changedTouches[0].clientY;if(Math.abs(dy)>60)nextVideo(dy>0?1:-1)},{passive:true});
-stage.addEventListener('click',function(e){if(e.target.closest('button'))return;playing=!playing;if(playing)startAudio();else if(audioTimer){clearInterval(audioTimer);audioTimer=null}window.__tapTip&&window.__tapTip(playing?'▶ 播放':'⏸ 暂停')});
+/* ---------- 手势：上滑看下一条 / 下滑看上一条 / 短按暂停 ---------- */
+var tY=0,tX=0,tT=0,moved=false;
+function togglePlay(){
+  playing=!playing;
+  if(playing){startAudio();document.getElementById('vdPause').classList.remove('on')}
+  else{if(audioTimer){clearInterval(audioTimer);audioTimer=null}document.getElementById('vdPause').classList.add('on')}
+}
+stage.addEventListener('touchstart',function(e){
+  var t=e.touches[0];tY=t.clientY;tX=t.clientX;tT=Date.now();moved=false;
+},{passive:true});
+stage.addEventListener('touchmove',function(e){
+  var t=e.touches[0];
+  if(Math.abs(t.clientY-tY)>10||Math.abs(t.clientX-tX)>10)moved=true;
+},{passive:true});
+var suppressClickUntil=0;
+stage.addEventListener('touchend',function(e){
+  if(e.target.closest('button')||e.target.closest('.vd-acts'))return;
+  if(cmtPanel.classList.contains('on'))return;          // 评论区打开时不切换
+  var t=e.changedTouches[0];
+  var dy=tY-t.clientY, dx=tX-t.clientX;
+  var dt=Date.now()-tT;
+  if(Math.abs(dy)>48&&Math.abs(dy)>Math.abs(dx)){
+    nextVideo(dy>0?1:-1);
+    suppressClickUntil=Date.now()+420;                  // 滑动后别把 click 当成短按
+    return;
+  }
+  if(dx<-48){ openComments(); suppressClickUntil=Date.now()+420; return }
+  if(!moved&&dt<260){ togglePlay(); suppressClickUntil=Date.now()+420 }
+},{passive:true});
+// 桌面端：滚轮切换 + 点击暂停
+stage.addEventListener('wheel',function(e){
+  if(Math.abs(e.deltaY)<12)return;
+  if(cmtPanel.classList.contains('on'))return;
+  nextVideo(e.deltaY>0?1:-1);
+},{passive:true});
+stage.addEventListener('click',function(e){
+  if(Date.now()<suppressClickUntil)return;
+  if(e.target.closest('button')||e.target.closest('.vd-acts'))return;
+  if(cmtPanel.classList.contains('on'))return;
+  togglePlay();
+});
 function renderMessages(){
-  var msgs=[{n:'互动消息',t:'不自卑再改名 赞了你分享的视频',tm:'昨天 22:00',badge:14,ic:'💗',sys:true},
-    {n:'不自卑再改名',t:'我们年级才一两对',tm:'28分钟前',fire:85},
-    {n:'我想好换什么名字了',t:'[分享视频] 这座城市的别名其实是…',tm:'32分钟前',fire:4},
-    {n:'Supertlee',t:'[分享视频]',tm:'00:20',fire:47},
-    {n:'zec',t:'[分享视频]',tm:'00:04',badge:1},
-    {n:'老鹰肘小鸡',t:'分享 [聊天记录]',tm:'昨天 16:56'},
-    {n:'千早的爱音',t:'已读 · [表情]',tm:'昨天 15:29'},
-    {n:'112',t:'已读 · 😂😂😂',tm:'昨天 11:02'}];
-  var rows=msgs.map(function(m,i){
-    var av=m.sys?'<div class="mav sys">'+m.ic+'</div>':'<div class="mav" style="background:hsl('+((i*61+200)%360)+' 45% 42%)">'+esc(m.n.slice(0,1))+'</div>';
-    return '<div class="mrow">'+av+'<div class="mmain"><div class="mn">'+esc(m.n)
-      +(m.fire?('<span class="mfire">🔥'+m.fire+'</span>'):'')+'</div>'
-      +'<div class="mt">'+esc(m.t)+'</div></div>'
-      +'<div class="mrt"><div class="mtm">'+esc(m.tm)+'</div>'
-      +(m.badge?('<div class="mbd">'+m.badge+'</div>'):'')+'</div></div>';
-  }).join('');
-  var tops=['限时日常','不自卑再…','Supertlee','AAA火鸡…','她若知道我'];
-  var strip='<div class="mtop">'+tops.map(function(t,i){
-    return '<div class="mti"><div class="mtav" style="background:hsl('+((i*83)%360)+' 40% 40%)">'+esc(t.slice(0,1))+'</div><span>'+esc(t)+'</span></div>';
-  }).join('')+'</div>';
-  pageBox.innerHTML='<div class="mpage"><div class="mph">消息</div>'+strip+rows+'</div>';
+  // 默认没有任何好友：只显示系统通知；真实会话从云讯同步过来（如果有）
+  var social=window.__SOCIAL||null;
+  var friends=(social&&Array.isArray(social.friends))?social.friends:[];
+  var sysRows='<div class="mrow"><div class="mav sys">💗</div><div class="mmain">'
+    +'<div class="mn">互动消息</div><div class="mt">还没有新的互动</div></div>'
+    +'<div class="mrt"><div class="mtm">刚刚</div></div></div>';
+  var rows=friends.length
+    ? friends.map(function(f,i){
+        var last=(f.msgs&&f.msgs.length)?f.msgs[f.msgs.length-1].text:'还没有聊天';
+        return '<div class="mrow"><div class="mav" style="background:hsl('+((i*61+200)%360)+' 45% 42%)">'+esc(String(f.name||'?').slice(0,1))+'</div>'
+          +'<div class="mmain"><div class="mn">'+esc(f.name||'')+'</div>'
+          +'<div class="mt">'+esc(String(last).slice(0,20))+'</div></div>'
+          +'<div class="mrt"><div class="mtm">'+(f.unread?('') :'已读')+'</div>'
+          +(f.unread?('<div class="mbd">'+f.unread+'</div>'):'')+'</div></div>';
+      }).join('')
+    : '<div class="meempty">还没有聊天<br><span style="font-size:11px;color:#4a4f5e">去「云讯」加个好友，这里就会出现</span></div>';
+  var strip='<div class="mtop"><div class="mti"><div class="mtav" style="background:rgba(255,255,255,.08);color:#5f6478">＋</div><span>发布日常</span></div></div>';
+  pageBox.innerHTML='<div class="mpage"><div class="mph">消息</div>'+strip+sysRows+rows+'</div>';
 }
 function renderMe(){
+  var ID=window.__IDENTITY||null;
+  var hasName=!!(ID&&ID.name);
   var grid=[['🛒','我的订单'],['🕐','观看历史'],['💼','我的钱包'],['🎧','我的客服'],['▦','全部功能']];
-  var st=[['3','获赞'],['12','互关'],['16','关注'],['12','粉丝']];
+  // 没有任何社交关系时，数据全为 0——不造假
+  var st=[['0','获赞'],['0','互关'],['0','关注'],['0','粉丝']];
+  var nameLine=hasName?esc(ID.name):'<span style="color:#6f7488">还没有名字</span>';
+  var idLine=hasName?('幻卓号：'+(String(ID.name).length*7919%900000+100000)):'去设置里取一个名字';
   pageBox.innerHTML='<div class="mepage">'
-    +'<div class="mehero"><div class="meav">🐱</div><div class="meinfo">'
-    +'<div class="mename">HermanN ▾</div><div class="meid">抖音号：912005968</div>'
-    +'<div class="merole">🎭 创建原创角色</div></div>'
-    +'<button class="meedit">编辑主页</button></div>'
+    +'<div class="mehero"><div class="meav">'+(hasName?esc(ID.avatar||'🙂'):'？')+'</div><div class="meinfo">'
+    +'<div class="mename">'+nameLine+'</div><div class="meid">'+idLine+'</div>'
+    +(hasName?'<div class="merole">🎭 身份已同步</div>':'<div class="merole" style="background:rgba(251,191,36,.18);color:#fbbf24">未设置身份</div>')
+    +'</div><button class="meedit" id="meEdit">'+(hasName?'编辑资料':'去设置')+'</button></div>'
     +'<div class="mestats">'+st.map(function(s){return '<div class="mest"><b>'+s[0]+'</b><span>'+s[1]+'</span></div>'}).join('')+'</div>'
-    +'<div class="mebio">点击添加介绍，让大家认识你… ✎</div>'
-    +'<div class="metags"><span>湖北 · 武汉</span><span>男 · -740 岁</span></div>'
+    +'<div class="mebio">'+(hasName&&ID.bio?esc(ID.bio):'点击添加介绍，让大家认识你… ✎')+'</div>'
+    +'<div class="metags"><span>地区未设置</span><span>资料未完善</span></div>'
     +'<div class="megrid">'+grid.map(function(g){return '<div class="meg"><span>'+g[0]+'</span>'+g[1]+'</div>'}).join('')+'</div>'
     +'<div class="metabs"><span class="on">作品</span><span>日常</span><span>推荐</span><span>收藏</span><span>喜欢</span></div>'
-    +'<div class="mepriv">🔒 私密作品 <span>1 ›</span></div>'
-    +'<div class="meempty">暂时没有更多了</div></div>';
+    +'<div class="meempty">还没有发布过作品</div></div>';
+  var eb=document.getElementById('meEdit');
+  if(eb)eb.onclick=function(){
+    parent.postMessage({type:'openSettings'},"*");
+  };
 }
 function switchTab(tab){
   document.querySelectorAll('#vdTabs .vtab').forEach(function(b){b.classList.toggle('on',b.getAttribute('data-t')===tab)});
@@ -2245,6 +2285,12 @@ renderVideo();`;
         +'.vtab.on{color:#fff;font-weight:700}.vtab.plus{flex:0 0 62px}'
         +'.vtab.plus span{display:inline-flex;width:38px;height:26px;border-radius:8px;background:#fff;color:#111;align-items:center;justify-content:center;font-size:18px;font-weight:700}'
         +'.vtab .dot{position:absolute;top:2px;right:calc(50% - 20px);background:#fe2c55;color:#fff;font-size:9px;border-radius:999px;padding:1px 5px;font-style:normal}'
+        +'.vd-pause{position:absolute;left:50%;top:46%;transform:translate(-50%,-50%) scale(.8);width:64px;height:64px;'
+        +'border-radius:50%;background:rgba(0,0,0,.45);color:#fff;font-size:24px;display:flex;align-items:center;justify-content:center;'
+        +'opacity:0;pointer-events:none;transition:.2s;z-index:7}'
+        +'.vd-pause.on{opacity:1;transform:translate(-50%,-50%) scale(1)}'
+        +'.vd-hintbar{position:absolute;left:0;right:0;bottom:62px;text-align:center;font-size:10.5px;'
+        +'color:rgba(255,255,255,.3);z-index:5;pointer-events:none;transition:opacity .4s}'
         +'.vd-page{position:absolute;inset:0 0 56px 0;background:#0f1117;overflow-y:auto;z-index:8}'
         +'.mpage{padding:14px 14px 20px}.mph{text-align:center;font-size:15px;font-weight:700;color:#fff;padding:6px 0 14px}'
         +'.mtop{display:flex;gap:14px;overflow-x:auto;padding-bottom:14px;scrollbar-width:none}.mtop::-webkit-scrollbar{display:none}'
@@ -2292,8 +2338,8 @@ renderVideo();`;
         +'<div class="vtab on" data-t="home">首页</div><div class="vtab" data-t="friend">朋友</div>'
         +'<div class="vtab plus" data-t="plus"><span>＋</span></div>'
         +'<div class="vtab" data-t="msg">消息<i class="dot">15</i></div><div class="vtab" data-t="me">我</div></div>'
-        +'<button id="vdPrev" style="position:absolute;left:0;top:0;width:40%;height:100%;opacity:0;z-index:2"></button>'
-        +'<button id="vdNext" style="position:absolute;right:0;top:0;width:40%;height:100%;opacity:0;z-index:2"></button>'
+        +'<div class="vd-pause" id="vdPause">▶</div>'
+        +'<div class="vd-hintbar">上滑看下一条 · 短按暂停</div>'
         +'</div>',
       js:js
     });
