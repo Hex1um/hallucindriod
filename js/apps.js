@@ -43,6 +43,7 @@
           + '</div>')
     + '<div class="ab-body">'+(cfg.html||'')+'</div>'
     + '<script>'+(cfg.js||'').replace(/<\/script/gi,'<\\/script')+'</script>'
+    + '<script>'+String(window.OS_DATA.GUARD_JS||'').replace(/<\/script/gi,'<\\/script')+'</script>'
     + '</body></html>';
   }
 

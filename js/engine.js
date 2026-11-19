@@ -236,7 +236,13 @@
     // 只下发非敏感配置：apiKey 绝不进 iframe（任何应用被注入脚本都读不到 Key）
     const safeCfg={confidence:D.CONFIG.confidence,model:D.CONFIG.model,apiBase:D.CONFIG.apiBase,hasKey:!!D.CONFIG.apiKey};
     const cfgPayload=JSON.stringify(safeCfg).replace(/</g,'\\u003c');
-    html=html.replace('</head>','<script>window.__CFG='+cfgPayload+';<\/script></head>');
+    // 系统身份一并下发（应用里显示"你是谁"用）
+    let identPayload='null';
+    try{
+      const idn=D.loadIdentity?D.loadIdentity():null;
+      if(idn&&idn.name)identPayload=JSON.stringify({name:idn.name,avatar:idn.avatar,bio:idn.bio}).replace(/</g,'\\u003c');
+    }catch(e){}
+    html=html.replace('</head>','<script>window.__CFG='+cfgPayload+';window.__IDENTITY='+identPayload+';<\/script></head>');
     // 浏览器：恢复上次访问的页面
     if(id==='browser'&&webState&&webState.data){
       const ws=JSON.stringify(webState).replace(/</g,'\\u003c');
@@ -332,6 +338,33 @@
     const has=w=>t.indexOf(w)>=0;
     const acts=[];
     const off=has('关闭')||has('关掉')||has('断开')||has('关一下');
+    // 安装/下载应用
+    const mInstall=t.match(/(?:下载|安装|装上|装个|装一个)\s*[「"]?([^」"，,。\s]{1,12})/);
+    if(mInstall&&!has('打开')){
+      acts.push({type:'installApp',target:mInstall[1],label:'安装 '+mInstall[1]});
+      return {reply:'正在安装「'+mInstall[1]+'」',actions:acts};
+    }
+    // 给某人发消息
+    const mMsg=t.match(/(?:给|跟|和)\s*([^\s，,]{1,10})\s*(?:发|说|告诉|讲)\s*(?:个|一条|下)?\s*(?:消息|短信)?[：:，,]?\s*(.+)/);
+    if(mMsg){
+      acts.push({type:'message',target:mMsg[1],text:mMsg[2].slice(0,40),label:'发给 '+mMsg[1]});
+      return {reply:'已发给'+mMsg[1],actions:acts};
+    }
+    // 改名字
+    const mName=t.match(/(?:叫我|我叫|改名|名字改成|以后叫)\s*[「"]?([^」"，,。\s]{1,12})/);
+    if(mName){
+      acts.push({type:'setIdentity',target:mName[1],label:'改名'});
+      return {reply:'好，以后就叫'+mName[1],actions:acts};
+    }
+    // 换语气
+    const mTone=t.match(/(?:换成|切换|用)\s*(毒舌|温柔|中二|翻译腔|默认)\s*(?:人格|语气|口吻)?/);
+    if(mTone){
+      acts.push({type:'setPersona',target:mTone[1],label:'切语气'});
+      return {reply:'换成'+mTone[1]+'语气',actions:acts};
+    }
+    // 推进世界 / 分享
+    if(/推进.*(一天|世界)|世界.*(推进|演化)/.test(t)){ acts.push({type:'evolveWorld',target:'',label:'推进世界'}); return {reply:'世界正在向前',actions:acts} }
+    if(/分享.*(这个|当前|页面)|生成.*链接/.test(t)){ acts.push({type:'shareApp',target:'',label:'分享'}); return {reply:'正在生成链接',actions:acts} }
     // 系统开关
     const toggles=[['手电','手电筒'],['飞行','飞行模式'],['蓝牙','蓝牙'],['勿扰','勿扰模式'],['旋转','自动旋转'],['wifi','移动数据'],['WIFI','移动数据'],['无线','移动数据'],['移动数据','移动数据'],['数据网络','移动数据']];
     toggles.forEach(([kw,label])=>{
@@ -369,9 +402,91 @@
       case 'toast': if(window.HOS)window.HOS.toast(t||a.label||'完成'); break;
       case 'toggle': if(window.HOS&&window.HOS.setToggle)window.HOS.setToggle(t||a.label,a.value); break;
       case 'call': openApp('phone','电话',{toast:t?('正在拨打 '+t):''}); break;
-      case 'message': openApp('messages','短信',{}); break;
-      case 'browse': openApp('browser',t||'浏览器',{}); break;
-      case 'searchApp': openApp('store','应用商店',{}); break;
+      case 'message':{
+        // 给好友发消息：真实写入会话并触发 AI 回复
+        const social=window.__SOCIAL||(window.__SOCIAL={profile:null,friends:[]});
+        if(!Array.isArray(social.friends))social.friends=[];
+        const body=String(a.text||a.label||'').replace(/^.*?[:：]\s*/,'').trim();
+        if(!body){ openApp('messages','云讯',{}); break }
+        let f=social.friends.find(x=>x.name===t)||social.friends[0];
+        if(!f){
+          // 还没有好友 → 自动建一个，然后把消息发过去
+          f={name:t||'新朋友',avatar:pick(['🐱','🌙','🦊','🎧']),isAI:true,msgs:[],unread:0,ts:Date.now()};
+          social.friends.unshift(f);
+        }
+        f.msgs=f.msgs||[];
+        f.msgs.push({me:true,text:body,ts:Date.now()});
+        f.ts=Date.now();
+        if(window.HOS&&window.HOS.saveSocial)window.HOS.saveSocial(social);
+        openApp('messages','云讯',{});
+        setTimeout(()=>socialReply(f.name,body),900);
+        if(window.HOS&&window.HOS.toast)window.HOS.toast('已发送给 '+f.name);
+        break;
+      }
+      case 'browse':{
+        // 打开网页：带着目标网址/主题进浏览器
+        llmGen('browser',t||'幻卓空间',0);
+        openApp('browser','浏览器',{});
+        setTimeout(()=>{
+          try{ frame.contentWindow.postMessage({type:'webnav',topic:t||'幻卓空间'},'*') }catch(e){}
+        },1200);
+        break;
+      }
+      case 'searchApp':{
+        openApp('store','应用商店',{});
+        if(t)setTimeout(()=>{ try{ frame.contentWindow.postMessage({type:'storenav',q:t},'*') }catch(e){} },1200);
+        break;
+      }
+      case 'installApp':{
+        // 下载并安装到桌面
+        const nm=String(t||a.label||'新应用').replace(/[<>"']/g,'').slice(0,16);
+        if(!nm){ if(window.HOS)window.HOS.toast('没听清要装什么'); break }
+        const list=window.__INSTALLED||(window.__INSTALLED=[]);
+        if(list.some(x=>x.name===nm)){
+          if(window.HOS)window.HOS.toast('「'+nm+'」已经在桌面上了');
+          break;
+        }
+        let hh=0;for(let i=0;i<nm.length;i++)hh=(hh*31+nm.charCodeAt(i))>>>0;
+        list.push({id:'custom_'+hh.toString(36),name:nm,emoji:pick(['🧩','🛠️','🎲','🪄','📦','🌀']),desc:'终端下载的应用',installedAt:Date.now()});
+        if(window.HOS&&window.HOS.saveInstalled)window.HOS.saveInstalled(list);
+        if(window.HOS&&window.HOS.refreshIcons)window.HOS.refreshIcons();
+        if(window.HOS&&window.HOS.toast)window.HOS.toast('「'+nm+'」已安装到桌面');
+        break;
+      }
+      case 'setIdentity':{
+        const Dd=window.OS_DATA;
+        if(!Dd||!Dd.setIdentity){ if(window.HOS)window.HOS.toast('身份模块不可用'); break }
+        const id=Dd.setIdentity(t||a.label,'', '');
+        if(!id||!id.name){ if(window.HOS)window.HOS.toast('名字不太合适'); break }
+        const social=window.__SOCIAL||(window.__SOCIAL={profile:null,friends:[]});
+        social.profile={name:id.name,avatar:id.avatar||'🙂',bio:id.bio||'',confidence:5};
+        if(window.HOS&&window.HOS.saveSocial)window.HOS.saveSocial(social);
+        Object.keys(dataCache).forEach(k=>{ if(k==='chatreply'||k==='friend')delete dataCache[k] });
+        if(window.HOS&&window.HOS.toast)window.HOS.toast('以后叫我 '+id.name+' 吧');
+        break;
+      }
+      case 'setPersona':{
+        const Dd=window.OS_DATA;
+        const keyMap={'毒舌':'snark','温柔':'gentle','中二':'chuuni','翻译腔':'trans','默认':'none'};
+        const k=keyMap[t]||'none';
+        D.CONFIG.persona=k;
+        if(D.saveConfig)D.saveConfig(D.CONFIG);
+        Object.keys(dataCache).forEach(x=>delete dataCache[x]);
+        if(window.HOS&&window.HOS.toast)window.HOS.toast('语气已切换 · '+t);
+        break;
+      }
+      case 'evolveWorld':
+        evolveWorld().then(w=>{ if(window.HOS)window.HOS.toast(w?('世界推进了 · '+(w.hotEvents[0]||'')):'推进失败') });
+        break;
+      case 'shareApp':
+        if(window.HOS&&window.HOS.toast)window.HOS.toast('正在生成分享链接…');
+        shareCurrent();
+        break;
+      case 'screenshot':{
+        try{ document.body.classList.add('shot-flash'); setTimeout(()=>document.body.classList.remove('shot-flash'),300) }catch(e){}
+        if(window.HOS&&window.HOS.toast)window.HOS.toast('已保存到相册（大概）');
+        break;
+      }
       default: break;
     }
   }
@@ -826,6 +941,7 @@
   const PRIV_OWNER={
     config:'settings', refresh:'settings', restoreApps:'settings',
     'world:reset':'settings', 'persona:set':'settings', 'world:evolve':'settings',
+    'identity:set':'settings', 'identity:random':'settings',
     install:'store', storegen:'store', openapp:'store',
     regen:'__self__',
     webgen:'browser', websearch:'browser', webstate:'browser',
@@ -924,6 +1040,28 @@
       Object.keys(viewCache).forEach(k=>delete viewCache[k]);
       setWebState(null);
       if(window.HOS&&window.HOS.toast)window.HOS.toast('世界已重置 · '+(w?w.city:'新城'));
+    }
+    else if(e.data.type==='identity:set'||e.data.type==='identity:random'){
+      const Dd=window.OS_DATA;
+      if(!Dd||!Dd.setIdentity)return;
+      let id=null;
+      if(e.data.type==='identity:random'){
+        id=Dd.saveIdentity(Dd.randomIdentity());
+      }else{
+        id=Dd.setIdentity(e.data.name,e.data.avatar,e.data.bio);
+      }
+      if(!id)return;
+      // 同步到社交资料（消息应用的头像/昵称）
+      const social=window.__SOCIAL||(window.__SOCIAL={profile:null,friends:[]});
+      social.profile={name:id.name,avatar:id.avatar,bio:id.bio,confidence:(social.profile&&social.profile.confidence)||5};
+      if(window.HOS&&window.HOS.saveSocial)window.HOS.saveSocial(social);
+      // 称呼变了，聊天/生成内容缓存失效
+      delete dataCache.chatreply;
+      delete dataCache.friend;
+      Object.keys(dataCache).forEach(k=>{ if(k==='chatreply'||k==='friend')delete dataCache[k] });
+      if(window.HOS&&window.HOS.toast)window.HOS.toast('身份已更新 · '+(id.avatar||'')+' '+id.name);
+      // 回传给设置页刷新显示
+      try{ frame.contentWindow.postMessage({type:'identity:saved',identity:id},'*') }catch(err){}
     }
     else if(e.data.type==='world:evolve'){
       if(window.HOS&&window.HOS.toast)window.HOS.toast('世界正在向前推进…');

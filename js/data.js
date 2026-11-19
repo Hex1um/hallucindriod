@@ -206,5 +206,91 @@ function ensurePersona(){
   return w;
 }
 
+// 交互兜底脚本：注入每个应用，保证任何按钮点击都有反馈
+const GUARD_JS=`
+(function(){
+  if(window.__tapGuard)return; window.__tapGuard=1;
+  var tipEl=null, tipTimer=null;
+  function tip(msg){
+    if(!tipEl){
+      tipEl=document.createElement('div');
+      tipEl.style.cssText='position:fixed;left:50%;bottom:80px;transform:translateX(-50%);background:rgba(0,0,0,.84);color:#fff;font-size:12px;padding:9px 16px;border-radius:999px;z-index:9999;opacity:0;transition:opacity .18s;pointer-events:none;max-width:80%;text-align:center';
+      document.body.appendChild(tipEl);
+    }
+    tipEl.textContent=msg; tipEl.style.opacity='1';
+    clearTimeout(tipTimer); tipTimer=setTimeout(function(){tipEl.style.opacity='0'},1500);
+  }
+  function snapshot(){
+    return (document.body.innerHTML.length|0)
+      + (document.querySelectorAll('.on,[class*=open],[class*=active],[class*=sheet],[class*=modal]').length*997)
+      + (((document.scrollingElement&&document.scrollingElement.scrollTop)||document.body.scrollTop||0)*3);
+  }
+  document.addEventListener('click',function(e){
+    var el=e.target.closest&&e.target.closest('button,[role=button],.btn,[data-act]');
+    if(!el||el.disabled)return;
+    var before=snapshot();
+    var label=(el.textContent||el.getAttribute('aria-label')||'').trim().slice(0,10);
+    setTimeout(function(){
+      if(snapshot()===before)tip(label?('「'+label+'」已处理'):'已处理');
+    },340);
+  },true);
+  window.__tapTip=tip;
+})();
+`;
+
+// ============ 系统身份：一开始没有，设置里随机或自定义 ============
+const IDENTITY_KEY='hallucindriod_identity_v1';
+const AVATARS=['🙂','🐱','🦊','🌙','🍀','🎧','🐳','🪐','🧊','🌵','🎐','🫧','🔮','🐧'];
+const NAME_A=['林间','深夜','雨天','楼顶','旧货','二手','临时','无名','慢慢','偶尔','对面','楼下','半糖','静音','断电'];
+const NAME_B=['散步的猫','便利店','程序员','收音机','打字员','观察员','乘客','邻居','回声','手工','天气','胶片','漫步者','守夜人'];
+
+function loadIdentity(){
+  try{
+    const o=JSON.parse(localStorage.getItem(IDENTITY_KEY)||'null');
+    if(o&&typeof o==='object')return {name:String(o.name||''),avatar:String(o.avatar||'🙂'),bio:String(o.bio||''),source:o.source||'custom',createdAt:o.createdAt||0};
+  }catch(e){}
+  return {name:'',avatar:'🙂',bio:'',source:'none',createdAt:0};
+}
+function saveIdentity(id){
+  try{ localStorage.setItem(IDENTITY_KEY,JSON.stringify(id)); }catch(e){}
+  window.__IDENTITY=id;
+  // 通知全局（消息应用会监听）
+  try{ window.dispatchEvent(new CustomEvent('hallucindriod:identity',{detail:id})) }catch(e){}
+  return id;
+}
+function hasIdentity(){ return !!loadIdentity().name }
+function randomIdentity(){
+  const nm=pick(NAME_A)+pick(NAME_B);
+  return {
+    name:nm.slice(0,12),
+    avatar:pick(AVATARS),
+    bio:pick([
+      '不常在线，但看到会回',
+      '正在学习怎么和 AI 相处',
+      '喜欢在深夜整理东西',
+      '对陌生应用保持好奇',
+      '手机里装着很多不存在的软件'
+    ]),
+    source:'random',
+    createdAt:Date.now()
+  };
+}
+function setIdentity(name,avatar,bio){
+  const cur=loadIdentity();
+  const clean=v=>String(v==null?'':v).replace(/[<>]/g,'').trim();
+  const id={
+    name:clean(name).slice(0,12),
+    avatar:clean(avatar)||cur.avatar||'🙂',
+    bio:clean(bio).slice(0,40),
+    source:'custom',
+    createdAt:cur.createdAt||Date.now()
+  };
+  if(!id.name)return cur;
+  return saveIdentity(id);
+}
+
+window.__IDENTITY=loadIdentity();
+
 window.OS_DATA = { APPS, DOCK_IDS, FOLDERS, WORDS, rnd, pick, pickN, chance, randInt, neonPalette, lunarDate, CONFIG, loadConfig, saveConfig, DEFAULT_CONFIG, escHTML, safeText,
-  WORLD_KEY, PERSONAS, loadWorld, saveWorld, ensureWorld, resetWorld, ensurePersona };
+  WORLD_KEY, PERSONAS, loadWorld, saveWorld, ensureWorld, resetWorld, ensurePersona,
+  GUARD_JS, IDENTITY_KEY, AVATARS, loadIdentity, saveIdentity, hasIdentity, randomIdentity, setIdentity };

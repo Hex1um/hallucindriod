@@ -40,6 +40,7 @@
           + '</div>')
     + '<div class="ab-body">'+(cfg.html||'')+'</div>'
     + '<script>'+(cfg.js||'').replace(/<\/script/gi,'<\\/script')+'</script>'
+    + '<script>'+String(window.OS_DATA.GUARD_JS||'').replace(/<\/script/gi,'<\\/script')+'</script>'
     + '</body></html>';
   }
 
@@ -66,6 +67,7 @@
 
   /* ---------- 浏览器：浏览器现编，网页也现编（套娃） ---------- */
   // 精致官网渲染器：此函数会被 toString() 注入沙箱 iframe 内执行，禁止引用任何外部闭包变量
+
   /* ---------- 网页渲染：按网站类型分模板 ---------- */
   function sitePalette(name){
     var palettes=[['#667eea','#764ba2'],['#4facfe','#00f2fe'],['#f093fb','#f5576c'],['#11998e','#38ef7d'],['#fa709a','#fee140'],['#30cfd0','#330867'],['#7f00ff','#e100ff']];
@@ -458,6 +460,7 @@
         +'  parent.postMessage({type:asUrl?"webgen":"websearch",[asUrl?"topic":"q"]:topic,nonce:lastNonce},"*");'
         +'}'
         +'window.addEventListener("message",function(e){'
+        +'  if(e.data&&e.data.type==="webnav"){nav(e.data.topic||"",true);return}'
         +'  if(!e.data||e.data.type!=="webdata")return;'
         +'  if(e.data.nonce&&e.data.nonce!==lastNonce)return;'
         +'  var d=e.data.data;'
@@ -684,6 +687,10 @@
     const html = '<div class="qq" id="app"></div><div class="ov" id="ov"></div><div class="toastin" id="tst"></div>';
 
     const js = `var S=${init};
+// 系统身份优先：设置里设过名字就直接用，不再要求单独注册
+if((!S.profile||!S.profile.name) && window.__IDENTITY && window.__IDENTITY.name){
+  S.profile={name:window.__IDENTITY.name,avatar:window.__IDENTITY.avatar||'🙂',bio:window.__IDENTITY.bio||'',confidence:5};
+}
 var app=document.getElementById('app'),ov=document.getElementById('ov'),tst=document.getElementById('tst');
 var GRADS=['linear-gradient(135deg,#22c55e,#15803d)','linear-gradient(135deg,#3b82f6,#1d4ed8)','linear-gradient(135deg,#f59e0b,#b45309)','linear-gradient(135deg,#a855f7,#6d28d9)','linear-gradient(135deg,#ec4899,#9d174d)','linear-gradient(135deg,#06b6d4,#0e7490)','linear-gradient(135deg,#f87171,#b91c1c)'];
 function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]})}
@@ -1151,6 +1158,8 @@ render();`;
     const comment=(L&&L.comment)||'系统运行流畅';
     const cfg=(typeof window.__CFG!=='undefined'&&window.__CFG)?window.__CFG:{confidence:0.35,apiBase:'',apiKey:'',model:'openai-fast'};
     const Dd=window.OS_DATA||{};
+    const ID=(Dd.loadIdentity?Dd.loadIdentity():{name:'',avatar:'🙂',bio:''});
+    const AVAS=Dd.AVATARS||['🙂'];
     let W=null; try{ W=Dd.ensurePersona?Dd.ensurePersona():(Dd.ensureWorld?Dd.ensureWorld():null) }catch(e){ W=null }
     const PERSONAS=Dd.PERSONAS||{};
     const curPersona=(Dd.CONFIG&&Dd.CONFIG.persona)||'none';
@@ -1199,6 +1208,19 @@ render();`;
         +'.rname{flex:1;color:#c9cad6}'
         +'.rbtn{border:none;border-radius:999px;padding:5px 12px;font-size:11px;background:rgba(255,255,255,.08);color:#b9bccb;cursor:pointer}'
         +'.rbtn:active{background:rgba(124,58,237,.35);color:#fff}'
+        +'.idbox{display:flex;gap:12px;align-items:center;padding:14px 14px 4px}'
+        +'.idav{width:46px;height:46px;border-radius:50%;background:rgba(124,58,237,.25);display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0}'
+        +'.idmain{flex:1;min-width:0}'
+        +'.idname{font-size:15px;font-weight:700;color:#fff}'
+        +'.idbio{font-size:11px;color:#8b90a5;margin-top:3px;line-height:1.5}'
+        +'.idwarn{margin:8px 14px 0;font-size:10.5px;color:#fbbf24;line-height:1.6}'
+        +'.idrow{display:flex;flex-direction:column;gap:8px;padding:12px 14px 0}'
+        +'.idrow input{width:100%;box-sizing:border-box;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);'
+        +'border-radius:10px;padding:10px 12px;color:#fff;font-size:12.5px;outline:none}'
+        +'.idrow input::placeholder{color:#6f7488}'
+        +'.avpicks{display:flex;flex-wrap:wrap;gap:6px;padding:12px 14px 0}'
+        +'.avp{width:32px;height:32px;border-radius:10px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.05);font-size:16px;cursor:pointer;padding:0}'
+        +'.avp.on{border-color:#a78bfa;background:rgba(124,58,237,.3)}'
         +'.world{padding:14px}'
         +'.wcity{font-size:20px;font-weight:700;color:#fff}'
         +'.wrole{font-size:11.5px;color:#a78bfa;margin-top:4px}'
@@ -1231,6 +1253,17 @@ render();`;
         +'<label class="lbl">模型名</label>'
         +'<input id="model" placeholder="openai-fast" value="'+(cfg.model||'')+'">'
         +'<button class="save" id="saveCfg">保存设置</button></div>'
+        +'<div class="grp card"><div class="gl">👤 我的身份</div>'
+        +'<div class="idbox"><div class="idav" id="idAv">'+(ID.avatar||'🙂')+'</div>'
+        +'<div class="idmain"><div class="idname">'+(ID.name||'还没有身份')+'</div>'
+        +'<div class="idbio">'+(ID.bio||'设置一个名字，整台手机都会用这个名字称呼你')+'</div></div></div>'
+        +(ID.name?'':'<div class="idwarn">未设置身份 · 消息、AI 对话、命运卡都会用「你」来称呼</div>')
+        +'<div class="idrow"><input id="idName" placeholder="名字（最多 12 字）" maxlength="12" value="'+(ID.name||'').replace(/"/g,'&quot;')+'">'
+        +'<input id="idBio" placeholder="一句话简介（可选）" maxlength="40" value="'+(ID.bio||'').replace(/"/g,'&quot;')+'"></div>'
+        +'<div class="avpicks">'+AVAS.map(a=>'<button class="avp'+(a===ID.avatar?' on':'')+'" data-a="'+a+'">'+a+'</button>').join('')+'</div>'
+        +'<div class="wbtns"><button class="rall" id="idSave">保存</button>'
+        +'<button class="rall" id="idRand">随机生成</button></div>'
+        +'<div class="whint">身份会同步到消息应用、AI 对话与今日命运卡</div></div>'
         +'<div class="grp card"><div class="gl">🌍 世界</div>'
         +'<div class="world"><div class="wcity">'+(W?W.city:'—')+'</div>'
         +'<div class="wrole">'+(W&&W.persona?('今日身份 · '+W.persona.role):'今日身份 · 未定')+'</div>'
@@ -1270,6 +1303,18 @@ render();`;
         +'apiKey:document.getElementById("apiKey").value.trim(),model:document.getElementById("model").value.trim()||"openai-fast"};'
         +'if(!c.apiKey)delete c.apiKey;'
         +'parent.postMessage({type:"config",cfg:c},"*");this.textContent="✓ 已保存";var s=this;setTimeout(function(){s.textContent="保存设置"},1500)};'
+        +'var pendingAv='+JSON.stringify(ID.avatar||'🙂')+';'
+        +'document.querySelectorAll(".avp").forEach(function(b){b.onclick=function(){'
+        +'document.querySelectorAll(".avp").forEach(function(x){x.classList.remove("on")});this.classList.add("on");'
+        +'pendingAv=this.getAttribute("data-a");document.getElementById("idAv").textContent=pendingAv;}});'
+        +'document.getElementById("idSave").onclick=function(){'
+        +'var nm=(document.getElementById("idName").value||"").trim();'
+        +'if(!nm){if(window.toast)toast("请输入名字");return}'
+        +'parent.postMessage({type:"identity:set",name:nm,avatar:pendingAv,bio:(document.getElementById("idBio").value||"").trim()},"*");'
+        +'this.textContent="✓ 已保存";var b=this;setTimeout(function(){b.textContent="保存"},1400);};'
+        +'document.getElementById("idRand").onclick=function(){'
+        +'parent.postMessage({type:"identity:random"},"*");this.textContent="生成中…";'
+        +'var b=this;setTimeout(function(){b.textContent="随机生成"},1200);};'
         +'var ev=document.getElementById("worldEvolve");'
         +'if(ev)ev.onclick=function(){parent.postMessage({type:"world:evolve"},"*");this.textContent="推进中…";'
         +'var b=this;setTimeout(function(){b.textContent="推进一天"},1200);};'
