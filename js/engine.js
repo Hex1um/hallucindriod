@@ -1050,10 +1050,21 @@
       // 换一座城：世界变了，所有基于旧世界的生成结果都要失效
       let w=null;
       try{ w=D.resetWorld() }catch(e){}
+      if(!w){ if(window.HOS&&window.HOS.toast)window.HOS.toast('换城失败，请重试'); return }
       Object.keys(dataCache).forEach(k=>delete dataCache[k]);
       Object.keys(viewCache).forEach(k=>delete viewCache[k]);
       setWebState(null);
-      if(window.HOS&&window.HOS.toast)window.HOS.toast('世界已重置 · '+(w?w.city:'新城'));
+      if(window.HOS&&window.HOS.toast)window.HOS.toast('已换到 · '+w.city);
+      // 重新打开设置页，让新的城市/身份/事件立刻显示出来
+      setTimeout(()=>{
+        try{
+          closeApp();
+          delete viewCache['settings'];            // closeApp 会存快照，这里再清一次
+          setTimeout(()=>{
+            try{ openApp('settings','设置',{force:true}) }catch(err){}   // force：跳过旧视图恢复
+          },240);
+        }catch(err){}
+      },320);
     }
     else if(e.data.type==='videogen'){
       // 短视频无限流：按需再生成一批（带上已出现过的标题避免重复）
