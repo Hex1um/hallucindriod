@@ -78,13 +78,20 @@
   function renderSiteHTML(d){
     d=d||{};
     function esc(v){return String(v==null?'':v).replace(/[&<>"']/g,function(c){return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]})}
-    d={siteName:esc(d.siteName||d.topic||''),tagline:esc(d.tagline||''),type:d.type,
-       heroTitle:esc(d.heroTitle||''),heroSub:esc(d.heroSub||''),cta:esc(d.cta||''),
-       aboutTitle:esc(d.aboutTitle||''),about:Array.isArray(d.about)?d.about.map(esc):(d.about?[esc(d.about)]:[]),
-       features:(d.features||[]).map(function(f){return {icon:esc(f.icon||''),title:esc(f.title||''),desc:esc(f.desc||'')}}),
-       stats:(d.stats||[]).map(function(s){return {num:esc(s.num||''),label:esc(s.label||'')}}),
+    // 过滤模型照抄的占位词（"品牌名2-6字""标语8字内"之类）
+    var PH=/\d+\s*[-~]?\s*\d*\s*字|字内|占位|示例|品牌名|标语|大标题|副标题|按钮\d/i;
+    function clean(v){
+      var t=String(v==null?'':v).trim();
+      return PH.test(t)?'':t;
+    }
+    d={siteName:esc(clean(d.siteName)||''),tagline:esc(clean(d.tagline)||''),type:d.type,
+       heroTitle:esc(clean(d.heroTitle)||''),heroSub:esc(clean(d.heroSub)||''),cta:esc(clean(d.cta)||''),
+       aboutTitle:esc(clean(d.aboutTitle)||''),about:Array.isArray(d.about)?d.about.map(function(x){return esc(clean(x))}).filter(Boolean):(d.about?[esc(clean(d.about))].filter(Boolean):[]),
+       features:(d.features||[]).map(function(f){return {icon:esc(f.icon||''),title:esc(clean(f.title)||''),desc:esc(clean(f.desc)||'')}}),
+       stats:(d.stats||[]).map(function(s){return {num:esc(clean(s.num)||''),label:esc(clean(s.label)||'')}}),
        news:(d.news||[]).map(function(n){return esc(typeof n==='string'?n:'')})};
     var name=d.siteName||d.topic||'新页面';
+    if(!d.siteName&&d.topic)d.siteName=esc(d.topic);
     var tag=d.tagline||'值得信赖的选择';
     var hero=d.heroTitle||('欢迎来到 '+name);
     var sub=d.heroSub||'在这里，每一次探索都有新的发现。';
@@ -169,6 +176,65 @@
       return '<div class="site type-news">'
         +'<div class="tnav"><b>✦ '+name+'</b><div class="tnl"><span class="on">要闻</span><span>科技</span><span>生活</span></div><div class="tav">我</div></div>'
         +'<div class="nlist">'+list+'</div></div>';
+    }
+
+
+
+    // ---- 论坛 ----
+    if(type==='forum'){
+      var rows='';
+      for(var r=0;r<5;r++){
+        var fr=feats[r%feats.length]||{title:'',desc:''};
+        rows+='<div class="frow"><div class="fav">'+['💬','🔥','📌','🧩','☕'][r]+'</div>'
+          +'<div class="fmain"><b>'+(fr.title||'帖子')+'</b><span>'+(fr.desc||'')+'</span>'
+          +'<div class="fm">'+(2+r*7)+' 回复 · '+(r+1)+' 小时前</div></div></div>';
+      }
+      return '<div class="site type-forum">'
+        +'<div class="tnav"><b>✦ '+name+'</b><div class="tnl"><span class="on">全部</span><span>精华</span><span>我的</span></div><div class="tav">我</div></div>'
+        +'<div class="sbar" style="background:'+grad+'">'+tag+'</div>'
+        +rows+'</div>';
+    }
+
+    // ---- 工具 ----
+    if(type==='tool'){
+      var tools='';
+      for(var t1=0;t1<6;t1++){
+        var ft=feats[t1%feats.length]||{title:'',desc:'',icon:'◇'};
+        tools+='<div class="tcell"><div class="tic">'+(ft.icon||'◇')+'</div>'
+          +'<b>'+(ft.title||hero)+'</b><span>'+(ft.desc||'')+'</span></div>';
+      }
+      return '<div class="site type-tool">'
+        +'<div class="tnav"><b>✦ '+name+'</b><div class="tnl"><span class="on">全部工具</span><span>收藏</span></div><div class="tav">我</div></div>'
+        +'<div class="sbar" style="background:'+grad+'">'+tag+' · 打开即用，无需登录</div>'
+        +'<div class="tgrid">'+tools+'</div></div>';
+    }
+
+    // ---- 百科 / 词条 ----
+    if(type==='wiki'){
+      var secs=about.concat(feats.map(function(f){return (f.title||'')+'：'+(f.desc||'')}));
+      var paras=secs.filter(Boolean).slice(0,6).map(function(x,i){
+        return '<div class="wk"><div class="wkh"><span class="wkn">'+(i+1)+'</span>'+x.split('：')[0]+'</div>'
+          +'<p>'+(x.split('：')[1]||x)+'</p></div>';
+      }).join('');
+      return '<div class="site type-wiki">'
+        +'<div class="tnav"><b>✦ '+name+'</b><div class="tnl"><span class="on">词条</span><span>讨论</span></div><div class="tav">我</div></div>'
+        +'<div class="wkhero"><h1>'+hero+'</h1><p>'+sub+'</p><div class="wktag">'+tag+'</div></div>'
+        +'<div class="wkbody">'+paras+'</div></div>';
+    }
+
+    // ---- 博客 ----
+    if(type==='blog'){
+      var artList='';
+      for(var b1=0;b1<5;b1++){
+        var fb=feats[b1%feats.length]||{title:'',desc:''};
+        artList+='<div class="bpost"><div class="bdate">'+(11-b1)+'月'+(20-b1*3)+'日</div>'
+          +'<b>'+(fb.title||hero)+'</b><p>'+(fb.desc||about[b1%about.length]||'')+'</p>'
+          +'<div class="bmore">阅读全文 ›</div></div>';
+      }
+      return '<div class="site type-blog">'
+        +'<div class="tnav"><b>✦ '+name+'</b><div class="tnl"><span class="on">文章</span><span>归档</span><span>关于</span></div><div class="tav">我</div></div>'
+        +'<div class="sbar" style="background:'+grad+'">'+tag+'</div>'
+        +artList+'</div>';
     }
 
     // ---- 官网（默认） ----
@@ -338,6 +404,29 @@
       /* 资讯 */
       +'.nlist{padding:6px 16px}'
       +'.na{padding:14px 0;border-bottom:1px solid #f2f2f6}'
+      +'.frow{display:flex;gap:12px;padding:14px 0;border-bottom:1px solid #f2f2f6;align-items:flex-start}'
+      +'.fav{width:34px;height:34px;border-radius:10px;background:#f4f4f8;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}'
+      +'.fmain{flex:1;min-width:0}.fmain b{font-size:14.5px;color:#141824;display:block;line-height:1.45}'
+      +'.fmain span{font-size:12px;color:#7b8194;display:block;margin-top:4px;line-height:1.6}'
+      +'.fm{font-size:11px;color:#a2a7b6;margin-top:6px}'
+      +'.tgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:14px 0}'
+      +'.tcell{background:#f7f7fb;border-radius:14px;padding:14px}'
+      +'.tic{font-size:22px;margin-bottom:8px}.tcell b{display:block;font-size:13.5px;color:#141824}'
+      +'.tcell span{display:block;font-size:11px;color:#7b8194;margin-top:4px;line-height:1.5}'
+      +'.wkhero{padding:22px 0 14px;border-bottom:1px solid #f2f2f6}'
+      +'.wkhero h1{margin:0;font-size:24px;color:#141824;line-height:1.3}'
+      +'.wkhero p{margin:10px 0 0;font-size:13px;color:#5c6274;line-height:1.7}'
+      +'.wktag{display:inline-block;margin-top:10px;font-size:11px;color:#4f46e5;background:#eef0ff;border-radius:999px;padding:3px 10px}'
+      +'.wkbody{padding:6px 0 20px}'
+      +'.wk{padding:14px 0;border-bottom:1px solid #f7f7fb}'
+      +'.wkh{font-size:15px;font-weight:700;color:#141824;display:flex;gap:8px;align-items:baseline}'
+      +'.wkn{font-size:11px;color:#a2a7b6;font-weight:400}'
+      +'.wk p{margin:8px 0 0;font-size:13px;color:#4c5265;line-height:1.85}'
+      +'.bpost{padding:16px 0;border-bottom:1px solid #f2f2f6}'
+      +'.bdate{font-size:11px;color:#a2a7b6;margin-bottom:6px}'
+      +'.bpost b{font-size:16px;color:#141824;display:block;line-height:1.45}'
+      +'.bpost p{margin:8px 0 0;font-size:12.5px;color:#5c6274;line-height:1.75}'
+      +'.bmore{margin-top:8px;font-size:12px;color:#4f46e5}'
       +'.na h3{margin:0 0 6px;font-size:14px;line-height:1.4;color:#1a1a24}'
       +'.na.top h3{font-size:18px}'
       +'.na p{margin:0 0 6px;font-size:11.5px;line-height:1.6;color:#777}'
@@ -1822,6 +1911,340 @@ document.querySelectorAll('.db').forEach(function(b){
 render();`;
 
     return shell({bare:true, title:'短视频', icon:'▶️', accent:'#fb7185', css:css, html:html, js:js});
+  };
+
+  // ============ 短视频（重做版）：Canvas 动态画面 + 声音 + 抖音式评论/消息/我的 ============
+  B.video = function(){
+    const L=(typeof window.__LLM!=='undefined'&&window.__LLM)?window.__LLM:null;
+    const STYLES=['night','nature','food','cat','tech','rain'];
+    const pickIdx=(n,i)=>n[((i%n.length)+n.length)%n.length];
+
+    let vids=(L&&Array.isArray(L.videos)&&L.videos.length)?L.videos:null;
+    if(!vids){
+      const POOLS={
+        night:{t:['凌晨三点的'+pick(WORDS.cities),'这条街比白天安静','路灯下有人在等'],
+               d:['没什么事，就是想走走','城市的另一面','夜里的风是凉的'],
+               c:['这个点还在外面的都是同类','看着看着就想出门了','路灯好暖'],m:['晚风','街灯','夜行']},
+        nature:{t:['山里的云开始动了','雨停之后的第一道光','风把树吹成一片'],
+                d:['拍的时候没加滤镜','等了四十分钟','这是真的颜色'],
+                c:['像画一样','这是哪座山','呼吸都变慢了'],m:['山谷','晨光','雾']},
+        food:{t:['一个人吃饭也要认真','今天做了'+pick(['番茄炒蛋','咖喱饭','一碗面']),'深夜的一碗热汤'],
+              d:['做法很简单','味道比看起来好','吃完了才想起来拍'],
+              c:['看饿了','求食谱','这个我可以'],m:['厨房','热气','家常']},
+        cat:{t:['猫在窗台上坐了半小时','它好像有话说','这只猫总在同一个位置'],
+             d:['它基本不理我','每次都这样','拍了很多张'],
+             c:['哈哈哈好可爱','它在想什么','猫：这人怎么还不走'],m:['午后','脚步声','阳光']},
+        tech:{t:['我把旧电脑装上了新系统','代码跑通的那一刻','折腾了一整晚'],
+              d:['其实没什么用','但很有成就感','下次不这么干了'],
+              c:['程序员狂喜','这个我也试过','求教程'],m:['键盘声','风扇','电流']},
+        rain:{t:['下雨天的声音','雨打在窗户上','雨停之前'],
+              d:['录音比画面好看','听着就困了','雨下了整晚'],
+              c:['这个声音好治愈','戴着耳机听','下雨天最适合发呆'],m:['雨声','窗外','雨夜']}
+      };
+      vids=Array.from({length:6},(_,i)=>{
+        const style=STYLES[i%STYLES.length],P=POOLS[style];
+        return {
+          title:pickIdx(P.t,i),up:'@'+pick(WORDS.artists),desc:pickIdx(P.d,i),
+          style:style,music:pick(P.m),likes:randInt(800,128000),shares:randInt(20,4000),
+          comments:Array.from({length:3},(_,k)=>({
+            user:pick(WORDS.contacts),text:P.c[(k+i)%P.c.length],
+            likes:randInt(12,2400),
+            reply:k===0?('作者：'+pick(['谢谢','哈哈是的','你也来试试'])):null,
+            loc:pick(['广东','浙江','北京','四川','江苏','海外'])
+          }))
+        };
+      });
+    }
+    vids=vids.map((v,i)=>{
+      const style=STYLES.indexOf(String(v.style))>=0?String(v.style):STYLES[i%STYLES.length];
+      const cs=Array.isArray(v.comments)?v.comments:[];
+      return {
+        title:String(v.title||'无题').slice(0,40),
+        up:String(v.up||'@创作者').slice(0,18),
+        desc:String(v.desc||'').slice(0,60),
+        style:style,music:String(v.music||'原声').slice(0,18),
+        likes:Number(v.likes)||randInt(800,99999),
+        shares:Number(v.shares)||randInt(20,3000),
+        comments:cs.slice(0,6).map((c,k)=>({
+          user:String((c&&c.user)||'网友').slice(0,14),
+          text:String((c&&c.text)||'说点什么').slice(0,60),
+          likes:Number(c&&c.likes)||randInt(5,900),
+          reply:(c&&c.reply)?String(c.reply).slice(0,40):null,
+          loc:String((c&&c.loc)||'广东')
+        }))
+      };
+    });
+    const dataJSON=JSON.stringify({videos:vids}).replace(/</g,'\\u003c');
+
+    const js = `var D=${dataJSON};
+var stage=document.getElementById('vdStage'),canvas=document.getElementById('vdCanvas'),
+    cmtPanel=document.getElementById('vdCmt'),cmtBody=document.getElementById('vdCmtBody'),
+    pageBox=document.getElementById('vdPage');
+var idx=0,loved={},playing=true,audioTimer=null,step=0;
+var ctx=canvas.getContext('2d');
+var particles=[];
+for(var i0=0;i0<70;i0++)particles.push({x:Math.random(),y:Math.random(),r:Math.random()*2.2+0.6,s:Math.random()*0.0009+0.0002,o:Math.random()});
+var PAL={night:['#0b1026','#1b2350','#6b7cff'],nature:['#0d2b1f','#1d5c3c','#8ee6a0'],
+  food:['#2b1608','#6b3a12','#ffbe55'],cat:['#2b1a22','#5c2f43','#ffb3c7'],
+  tech:['#0a1428','#16305c','#4fd1ff'],rain:['#101820','#243242','#9fd8ff']};
+function drawFrame(ts){
+  var v=D.videos[idx]||D.videos[0],p=PAL[v.style]||PAL.night;
+  var w=canvas.width,h=canvas.height,t=ts/1000;
+  var g=ctx.createLinearGradient(0,0,w*0.4,h);
+  g.addColorStop(0,p[0]);g.addColorStop(0.55,p[1]);g.addColorStop(1,p[0]);
+  ctx.fillStyle=g;ctx.fillRect(0,0,w,h);
+  var cx=w*(0.5+Math.sin(t*0.3)*0.16),cy=h*(0.42+Math.cos(t*0.24)*0.1);
+  var rg=ctx.createRadialGradient(cx,cy,10,cx,cy,w*0.55);
+  rg.addColorStop(0,p[2]+'88');rg.addColorStop(1,'rgba(0,0,0,0)');
+  ctx.fillStyle=rg;ctx.fillRect(0,0,w,h);
+  ctx.save();
+  if(v.style==='night'||v.style==='tech'){
+    ctx.fillStyle='rgba(0,0,0,.42)';
+    for(var i=0;i<9;i++){var bh=h*(0.16+((i*37)%45)/100),bw=w/11;ctx.fillRect(i*bw+bw*0.12,h-bh,bw*0.72,bh)}
+    for(var k=0;k<particles.length;k++){
+      var q=particles[k];
+      ctx.globalAlpha=0.25+0.45*Math.abs(Math.sin(t*1.1+q.o*6));
+      ctx.fillStyle=p[2];ctx.beginPath();ctx.arc(q.x*w,q.y*h*0.75,q.r,0,7);ctx.fill();
+    }
+  }else if(v.style==='nature'){
+    ctx.strokeStyle=p[2]+'66';ctx.lineWidth=1.4;
+    for(var n=0;n<4;n++){
+      ctx.beginPath();
+      for(var x=0;x<=w;x+=8){
+        var y=h*0.55+n*26+Math.sin(x*0.012+t*(0.5+n*0.2))*16;
+        x===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
+      }
+      ctx.stroke();
+    }
+    for(var m=0;m<particles.length;m++){
+      var q2=particles[m];
+      var px=(q2.x+t*q2.s*220)%1,py=(q2.y+t*q2.s*130)%1;
+      ctx.globalAlpha=0.3+0.4*Math.abs(Math.sin(t+q2.o*5));
+      ctx.fillStyle=p[2];ctx.beginPath();ctx.arc(px*w,py*h,q2.r,0,7);ctx.fill();
+    }
+  }else if(v.style==='food'){
+    for(var f=0;f<5;f++){
+      ctx.globalAlpha=0.16;ctx.fillStyle=p[2];
+      ctx.beginPath();
+      ctx.arc(w*0.5+Math.sin(t*0.7+f)*w*0.18,h*0.55+Math.cos(t*0.6+f)*h*0.12,40+f*16,0,7);
+      ctx.fill();
+    }
+  }else if(v.style==='cat'){
+    ctx.globalAlpha=0.2;ctx.fillStyle=p[2];
+    for(var c2=0;c2<particles.length;c2++){
+      var q3=particles[c2];
+      ctx.beginPath();ctx.arc(q3.x*w,((q3.y+t*q3.s*80)%1)*h,q3.r*2,0,7);ctx.fill();
+    }
+  }else{
+    ctx.strokeStyle=p[2]+'77';ctx.lineWidth=1.1;
+    for(var r2=0;r2<90;r2++){
+      var rx=(r2*97)%w,ry=((r2*53+t*420)%(h+40))-20;
+      ctx.beginPath();ctx.moveTo(rx,ry);ctx.lineTo(rx-5,ry+16);ctx.stroke();
+    }
+  }
+  ctx.restore();
+  var vg=ctx.createRadialGradient(w/2,h/2,h*0.3,w/2,h/2,h*0.78);
+  vg.addColorStop(0,'rgba(0,0,0,0)');vg.addColorStop(1,'rgba(0,0,0,.55)');
+  ctx.fillStyle=vg;ctx.fillRect(0,0,w,h);
+  requestAnimationFrame(drawFrame);
+}
+requestAnimationFrame(drawFrame);
+var SCALES={night:[220,246.94,261.63,329.63,392],nature:[261.63,293.66,329.63,392,440],
+  food:[293.66,329.63,392,440,523.25],cat:[329.63,392,440,523.25,587.33],
+  tech:[196,233.08,261.63,311.13,392],rain:[174.61,196,220,261.63,293.66]};
+function startAudio(){
+  if(audioTimer)clearInterval(audioTimer);
+  audioTimer=setInterval(function(){
+    if(!playing)return;
+    var v=D.videos[idx]||D.videos[0],sc=SCALES[v.style]||SCALES.night;
+    var n=sc[step%sc.length];
+    parent.postMessage({type:'tone',freq:n,dur:0.42,vol:0.075,wave:'sine'},'*');
+    if(step%4===0)parent.postMessage({type:'tone',freq:n/2,dur:0.9,vol:0.05,wave:'triangle'},'*');
+    if(v.style==='tech'&&step%2===1)parent.postMessage({type:'tone',freq:n*2,dur:0.08,vol:0.03,wave:'square'},'*');
+    step++;
+  },480);
+}
+startAudio();
+function fmt(n){if(n>=10000)return (n/10000).toFixed(1)+'w';if(n>=1000)return (n/1000).toFixed(1)+'k';return String(n)}
+function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]})}
+function renderVideo(){
+  var v=D.videos[idx];
+  document.getElementById('vdUp').textContent=v.up;
+  document.getElementById('vdTitle').textContent=v.title;
+  document.getElementById('vdDesc').textContent=v.desc||v.title;
+  document.getElementById('vdMusic').textContent='♫ '+v.music+' · 原声';
+  document.getElementById('vdLikeN').textContent=fmt(v.likes+(loved[idx]?1:0));
+  document.getElementById('vdCmtN').textContent=fmt(v.comments.length*37);
+  document.getElementById('vdLike').classList.toggle('on',!!loved[idx]);
+}
+function nextVideo(dir){idx=(idx+dir+D.videos.length)%D.videos.length;step=0;renderVideo()}
+function openComments(){
+  var v=D.videos[idx];
+  var rows=v.comments.map(function(c,i){
+    return '<div class="vc-row"><div class="vc-av" style="background:hsl('+((i*77+40)%360)+' 55% 45%)">'+esc(c.user.slice(0,1))+'</div>'
+      +'<div class="vc-main"><div class="vc-name">'+esc(c.user)+'</div>'
+      +'<div class="vc-text">'+esc(c.text)+'</div>'
+      +'<div class="vc-meta"><span>'+esc(c.loc)+'</span><span>·</span><span>'+['2小时前','5小时前','昨天','3天前'][i%4]+'</span><b>回复</b></div>'
+      +(c.reply?('<div class="vc-reply"><span>作者</span>'+esc(c.reply)+'</div>'):'')
+      +'</div><div class="vc-like">♡<span>'+fmt(c.likes)+'</span></div></div>';
+  }).join('');
+  cmtBody.innerHTML='<div class="vc-head"><b>'+fmt(v.comments.length*37)+' 条评论</b><span class="vc-ai">AI 解析</span>'
+    +'<button id="vcClose">✕</button></div>'
+    +'<div class="vc-hint">都来自「'+esc(v.title.slice(0,12))+'」</div>'+rows;
+  cmtPanel.classList.add('on');
+  var cb=document.getElementById('vcClose');if(cb)cb.onclick=function(){cmtPanel.classList.remove('on')};
+}
+document.getElementById('vdLike').onclick=function(){loved[idx]=!loved[idx];renderVideo()};
+document.getElementById('vdCmtBtn').onclick=openComments;
+document.getElementById('vdShare').onclick=function(){window.__tapTip&&window.__tapTip('已复制链接（大概）')};
+document.getElementById('vdNext').onclick=function(){nextVideo(1)};
+document.getElementById('vdPrev').onclick=function(){nextVideo(-1)};
+var touchY=0;
+stage.addEventListener('touchstart',function(e){touchY=e.touches[0].clientY},{passive:true});
+stage.addEventListener('touchend',function(e){var dy=touchY-e.changedTouches[0].clientY;if(Math.abs(dy)>60)nextVideo(dy>0?1:-1)},{passive:true});
+stage.addEventListener('click',function(e){if(e.target.closest('button'))return;playing=!playing;if(playing)startAudio();else if(audioTimer){clearInterval(audioTimer);audioTimer=null}window.__tapTip&&window.__tapTip(playing?'▶ 播放':'⏸ 暂停')});
+function renderMessages(){
+  var msgs=[{n:'互动消息',t:'不自卑再改名 赞了你分享的视频',tm:'昨天 22:00',badge:14,ic:'💗',sys:true},
+    {n:'不自卑再改名',t:'我们年级才一两对',tm:'28分钟前',fire:85},
+    {n:'我想好换什么名字了',t:'[分享视频] 这座城市的别名其实是…',tm:'32分钟前',fire:4},
+    {n:'Supertlee',t:'[分享视频]',tm:'00:20',fire:47},
+    {n:'zec',t:'[分享视频]',tm:'00:04',badge:1},
+    {n:'老鹰肘小鸡',t:'分享 [聊天记录]',tm:'昨天 16:56'},
+    {n:'千早的爱音',t:'已读 · [表情]',tm:'昨天 15:29'},
+    {n:'112',t:'已读 · 😂😂😂',tm:'昨天 11:02'}];
+  var rows=msgs.map(function(m,i){
+    var av=m.sys?'<div class="mav sys">'+m.ic+'</div>':'<div class="mav" style="background:hsl('+((i*61+200)%360)+' 45% 42%)">'+esc(m.n.slice(0,1))+'</div>';
+    return '<div class="mrow">'+av+'<div class="mmain"><div class="mn">'+esc(m.n)
+      +(m.fire?('<span class="mfire">🔥'+m.fire+'</span>'):'')+'</div>'
+      +'<div class="mt">'+esc(m.t)+'</div></div>'
+      +'<div class="mrt"><div class="mtm">'+esc(m.tm)+'</div>'
+      +(m.badge?('<div class="mbd">'+m.badge+'</div>'):'')+'</div></div>';
+  }).join('');
+  var tops=['限时日常','不自卑再…','Supertlee','AAA火鸡…','她若知道我'];
+  var strip='<div class="mtop">'+tops.map(function(t,i){
+    return '<div class="mti"><div class="mtav" style="background:hsl('+((i*83)%360)+' 40% 40%)">'+esc(t.slice(0,1))+'</div><span>'+esc(t)+'</span></div>';
+  }).join('')+'</div>';
+  pageBox.innerHTML='<div class="mpage"><div class="mph">消息</div>'+strip+rows+'</div>';
+}
+function renderMe(){
+  var grid=[['🛒','我的订单'],['🕐','观看历史'],['💼','我的钱包'],['🎧','我的客服'],['▦','全部功能']];
+  var st=[['3','获赞'],['12','互关'],['16','关注'],['12','粉丝']];
+  pageBox.innerHTML='<div class="mepage">'
+    +'<div class="mehero"><div class="meav">🐱</div><div class="meinfo">'
+    +'<div class="mename">HermanN ▾</div><div class="meid">抖音号：912005968</div>'
+    +'<div class="merole">🎭 创建原创角色</div></div>'
+    +'<button class="meedit">编辑主页</button></div>'
+    +'<div class="mestats">'+st.map(function(s){return '<div class="mest"><b>'+s[0]+'</b><span>'+s[1]+'</span></div>'}).join('')+'</div>'
+    +'<div class="mebio">点击添加介绍，让大家认识你… ✎</div>'
+    +'<div class="metags"><span>湖北 · 武汉</span><span>男 · -740 岁</span></div>'
+    +'<div class="megrid">'+grid.map(function(g){return '<div class="meg"><span>'+g[0]+'</span>'+g[1]+'</div>'}).join('')+'</div>'
+    +'<div class="metabs"><span class="on">作品</span><span>日常</span><span>推荐</span><span>收藏</span><span>喜欢</span></div>'
+    +'<div class="mepriv">🔒 私密作品 <span>1 ›</span></div>'
+    +'<div class="meempty">暂时没有更多了</div></div>';
+}
+function switchTab(tab){
+  document.querySelectorAll('#vdTabs .vtab').forEach(function(b){b.classList.toggle('on',b.getAttribute('data-t')===tab)});
+  if(tab==='home'){pageBox.style.display='none';stage.style.display='block';return}
+  stage.style.display='none';pageBox.style.display='block';
+  if(tab==='msg')renderMessages();
+  else if(tab==='me')renderMe();
+  else if(tab==='friend')pageBox.innerHTML='<div class="mpage"><div class="mph">朋友</div><div class="meempty">还没有朋友发过视频</div></div>';
+  else pageBox.innerHTML='<div class="mpage"><div class="mph">发布</div><div class="meempty">拍一段试试（大概）</div></div>';
+}
+document.querySelectorAll('#vdTabs .vtab').forEach(function(b){b.onclick=function(){switchTab(this.getAttribute('data-t'))}});
+pageBox.style.display='none';
+renderVideo();`;
+
+    return shell({
+      title:'短视频', icon:'🎬', accent:'#fb7185', bare:true,
+      css:'.vd{position:relative;height:100%;background:#000;overflow:hidden}'
+        +'.vd-stage{position:absolute;inset:0}.vd-stage canvas{width:100%;height:100%;display:block}'
+        +'.vd-top{position:absolute;top:10px;left:0;right:0;display:flex;justify-content:center;gap:22px;z-index:6}'
+        +'.vd-top span{font-size:14px;color:rgba(255,255,255,.62);font-weight:600;padding-bottom:6px}'
+        +'.vd-top span.on{color:#fff;border-bottom:2px solid #fff}'
+        +'.vd-acts{position:absolute;right:10px;bottom:132px;display:flex;flex-direction:column;gap:16px;z-index:6;align-items:center}'
+        +'.vd-acts button{border:none;background:none;color:#fff;font-size:26px;line-height:1;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:3px;text-shadow:0 2px 8px rgba(0,0,0,.5)}'
+        +'.vd-acts button span{font-size:10.5px;font-weight:600}.vd-acts button.on{color:#fe2c55}'
+        +'.vd-av{width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg,#fb7185,#e11d48);display:flex;align-items:center;justify-content:center;font-size:20px;border:2px solid #fff}'
+        +'.vd-info{position:absolute;left:14px;right:72px;bottom:98px;z-index:6;color:#fff;text-shadow:0 2px 10px rgba(0,0,0,.6)}'
+        +'.vd-up{font-size:14.5px;font-weight:700;margin-bottom:8px}'
+        +'.vd-title{font-size:14px;line-height:1.55;margin-bottom:4px}'
+        +'.vd-desc{font-size:12.5px;color:rgba(255,255,255,.82);line-height:1.55;margin-bottom:8px}'
+        +'.vd-music{font-size:11.5px;color:rgba(255,255,255,.78)}'
+        +'.vd-cmt{position:absolute;left:0;right:0;bottom:0;top:36%;background:#161722;border-radius:18px 18px 0 0;transform:translateY(105%);transition:transform .26s;z-index:20;display:flex;flex-direction:column}'
+        +'.vd-cmt.on{transform:none}'
+        +'.vc-head{display:flex;align-items:center;gap:12px;padding:14px 16px 10px;border-bottom:1px solid rgba(255,255,255,.07)}'
+        +'.vc-head b{font-size:13px;color:#fff}.vc-ai{font-size:11px;color:#8b90a5}'
+        +'.vc-head button{margin-left:auto;border:none;background:none;color:#8b90a5;font-size:16px;cursor:pointer}'
+        +'.vc-hint{font-size:10.5px;color:#6f7488;padding:8px 16px 0}'
+        +'.vc-body{flex:1;overflow-y:auto;padding:6px 16px 20px;scrollbar-width:none}'
+        +'.vc-body::-webkit-scrollbar{display:none}'
+        +'.vc-row{display:flex;gap:10px;padding:12px 0;border-bottom:1px solid rgba(255,255,255,.05)}'
+        +'.vc-av{width:33px;height:33px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;color:#fff;flex-shrink:0}'
+        +'.vc-main{flex:1;min-width:0}.vc-name{font-size:11.5px;color:#9aa0b5;margin-bottom:3px}'
+        +'.vc-text{font-size:13.5px;color:#f2f3f7;line-height:1.6}'
+        +'.vc-meta{display:flex;gap:8px;align-items:center;font-size:11px;color:#6f7488;margin-top:6px}'
+        +'.vc-meta b{font-weight:400;color:#8b90a5}'
+        +'.vc-reply{margin-top:8px;font-size:12px;color:#b9bcc8;background:rgba(255,255,255,.05);border-radius:8px;padding:7px 10px;line-height:1.55}'
+        +'.vc-reply span{color:#fe2c55;margin-right:5px;font-size:11px}'
+        +'.vc-like{font-size:12px;color:#6f7488;display:flex;flex-direction:column;align-items:center;gap:2px;flex-shrink:0}'
+        +'.vtabbar{position:absolute;left:0;right:0;bottom:0;height:56px;display:flex;align-items:center;background:rgba(10,10,14,.86);backdrop-filter:blur(10px);z-index:12}'
+        +'.vtab{flex:1;text-align:center;font-size:11.5px;color:rgba(255,255,255,.55);cursor:pointer;position:relative;padding:6px 0}'
+        +'.vtab.on{color:#fff;font-weight:700}.vtab.plus{flex:0 0 62px}'
+        +'.vtab.plus span{display:inline-flex;width:38px;height:26px;border-radius:8px;background:#fff;color:#111;align-items:center;justify-content:center;font-size:18px;font-weight:700}'
+        +'.vtab .dot{position:absolute;top:2px;right:calc(50% - 20px);background:#fe2c55;color:#fff;font-size:9px;border-radius:999px;padding:1px 5px;font-style:normal}'
+        +'.vd-page{position:absolute;inset:0 0 56px 0;background:#0f1117;overflow-y:auto;z-index:8}'
+        +'.mpage{padding:14px 14px 20px}.mph{text-align:center;font-size:15px;font-weight:700;color:#fff;padding:6px 0 14px}'
+        +'.mtop{display:flex;gap:14px;overflow-x:auto;padding-bottom:14px;scrollbar-width:none}.mtop::-webkit-scrollbar{display:none}'
+        +'.mti{display:flex;flex-direction:column;align-items:center;gap:6px;flex-shrink:0;width:54px}'
+        +'.mti span{font-size:10px;color:#9aa0b5;width:54px;text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}'
+        +'.mtav{width:48px;height:48px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:18px;color:#fff}'
+        +'.mrow{display:flex;gap:12px;align-items:center;padding:12px 2px;border-bottom:1px solid rgba(255,255,255,.05)}'
+        +'.mav{width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:18px;color:#fff;flex-shrink:0}'
+        +'.mav.sys{background:linear-gradient(135deg,#fe2c55,#ff6b81);font-size:20px}'
+        +'.mmain{flex:1;min-width:0}.mn{font-size:13.5px;color:#f2f3f7;display:flex;align-items:center;gap:6px}'
+        +'.mfire{font-size:10px;color:#ff8a5c}'
+        +'.mt{font-size:12px;color:#8b90a5;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}'
+        +'.mrt{text-align:right;flex-shrink:0}.mtm{font-size:10px;color:#6f7488}'
+        +'.mbd{background:#fe2c55;color:#fff;font-size:9.5px;border-radius:999px;padding:1px 5px;margin-top:6px;display:inline-block}'
+        +'.mepage{padding:16px 14px 20px}'
+        +'.mehero{display:flex;gap:14px;align-items:center}'
+        +'.meav{width:72px;height:72px;border-radius:50%;background:linear-gradient(135deg,#6b7cff,#2b2350);display:flex;align-items:center;justify-content:center;font-size:34px}'
+        +'.meinfo{flex:1;min-width:0}.mename{font-size:17px;font-weight:700;color:#fff}'
+        +'.meid{font-size:10.5px;color:#8b90a5;margin-top:4px}'
+        +'.merole{display:inline-block;margin-top:8px;font-size:10px;color:#cfc4ff;background:rgba(124,58,237,.25);border-radius:999px;padding:3px 9px}'
+        +'.meedit{border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.06);color:#e6e7ee;font-size:11.5px;border-radius:8px;padding:7px 12px;cursor:pointer;align-self:flex-start}'
+        +'.mestats{display:flex;gap:26px;margin:18px 0 10px}.mest{text-align:center}'
+        +'.mest b{display:block;font-size:16px;color:#fff}.mest span{font-size:10.5px;color:#8b90a5}'
+        +'.mebio{font-size:12px;color:#6f7488;margin:8px 0}'
+        +'.metags{display:flex;gap:8px;margin-bottom:14px}'
+        +'.metags span{font-size:10px;color:#9aa0b5;background:rgba(255,255,255,.06);border-radius:6px;padding:3px 8px}'
+        +'.megrid{display:flex;justify-content:space-between;padding:14px 0;border-top:1px solid rgba(255,255,255,.06);border-bottom:1px solid rgba(255,255,255,.06)}'
+        +'.meg{display:flex;flex-direction:column;align-items:center;gap:6px;font-size:10.5px;color:#c9cad6}.meg span{font-size:19px}'
+        +'.metabs{display:flex;gap:20px;padding:14px 2px;font-size:13px;color:#8b90a5}.metabs .on{color:#fff;font-weight:700}'
+        +'.mepriv{display:flex;justify-content:space-between;align-items:center;font-size:12.5px;color:#c9cad6;background:rgba(255,255,255,.05);border-radius:10px;padding:12px 14px}'
+        +'.meempty{text-align:center;color:#5f6478;font-size:12px;padding:44px 0}',
+      html:'<div class="vd">'
+        +'<div class="vd-stage" id="vdStage"><canvas id="vdCanvas" width="720" height="1280"></canvas></div>'
+        +'<div class="vd-top"><span class="on">关注</span><span>推荐</span><span>同城</span></div>'
+        +'<div class="vd-acts"><div class="vd-av">🐱</div>'
+        +'<button id="vdLike">♡<span id="vdLikeN">0</span></button>'
+        +'<button id="vdCmtBtn">💬<span id="vdCmtN">0</span></button>'
+        +'<button id="vdShare">↗<span>分享</span></button></div>'
+        +'<div class="vd-info"><div class="vd-up" id="vdUp">@创作者</div>'
+        +'<div class="vd-title" id="vdTitle"></div><div class="vd-desc" id="vdDesc"></div>'
+        +'<div class="vd-music" id="vdMusic">♫ 原声</div></div>'
+        +'<div class="vd-cmt" id="vdCmt"><div class="vc-body" id="vdCmtBody"></div></div>'
+        +'<div class="vd-page" id="vdPage"></div>'
+        +'<div class="vtabbar" id="vdTabs">'
+        +'<div class="vtab on" data-t="home">首页</div><div class="vtab" data-t="friend">朋友</div>'
+        +'<div class="vtab plus" data-t="plus"><span>＋</span></div>'
+        +'<div class="vtab" data-t="msg">消息<i class="dot">15</i></div><div class="vtab" data-t="me">我</div></div>'
+        +'<button id="vdPrev" style="position:absolute;left:0;top:0;width:40%;height:100%;opacity:0;z-index:2"></button>'
+        +'<button id="vdNext" style="position:absolute;right:0;top:0;width:40%;height:100%;opacity:0;z-index:2"></button>'
+        +'</div>',
+      js:js
+    });
   };
 
 })();

@@ -26,7 +26,15 @@
     weather: n=>`为天气App编内容。格式：{"city":"城市名","weather":"天气现象","temp":数字,"tip":"一句天气提示，20字内"}。主题：${n}`,
     notes:   n=>`编一条中文便签。格式：{"text":"便签正文，35字内","mood":"一个emoji","sign":"署名地点"}。主题：${n}`,
     store:   n=>`编3个中文App。格式：{"apps":[{"name":"App名","desc":"一句介绍，20字内","emoji":"一个emoji"}]}。主题：${n}`,
-    browser: n=>`用户想打开「${n}」。先判断它是什么网站（社交/视频/购物/资讯/工具/企业等），据此设计一个符合该定位的中文网页首页。只输出纯JSON，字段齐全：{"siteName":"品牌名2-6字","type":"类型，只能是 social/video/shop/news/tool/official 之一","tagline":"标语8字内","heroTitle":"大标题14字内","heroSub":"副标题26字内","cta":"按钮4字内","aboutTitle":"板块标题","about":"一段介绍50字内","features":[{"icon":"emoji","title":"4-6字","desc":"18字内"}],"stats":[{"num":"120万","label":"用户"},{"num":"4.9分","label":"评分"},{"num":"98%","label":"好评"}]}`,
+    browser: n=>`用户想打开「${n}」。先判断它是什么网站（社交/视频/购物/资讯/工具/企业/政府/论坛/博客等），据此设计一个符合该定位的中文网页首页。
+只输出一个纯JSON对象，不要markdown代码块，不要解释。
+格式示例（**下面只是格式示意，你必须根据「${n}」写出全新的真实内容，严禁照抄示例里的任何文字**）：
+{"siteName":"荒野气象台","type":"news","tagline":"每天一点天气","heroTitle":"今天，风从西边来","heroSub":"城郊的风力比昨天大了两级，出门记得压住帽子。","cta":"查看预报","aboutTitle":"关于我们","about":"三个气象爱好者在楼顶搭了一台旧仪器，后来它一直没坏。","features":[{"icon":"🌤","title":"实时云图","desc":"每十分钟更新一次，误差不大"},{"icon":"📮","title":"订阅提醒","desc":"变天前一小时发消息给你"},{"icon":"🗂","title":"历史查询","desc":"翻得到过去三年的记录"}],"stats":[{"num":"12万","label":"订阅用户"},{"num":"4.8","label":"用户评分"},{"num":"96%","label":"预报准确率"}]}
+要求：
+1) type 只能是 social/video/shop/news/tool/official/forum/wiki/blog 之一；
+2) siteName 是真正的站名，不要写"品牌名"这种占位词；
+3) tagline/heroTitle/heroSub/cta/about/features/stats 全部针对「${n}」编写，彼此呼应；
+4) 禁止出现"X字内""2-6字""示例""占位"这类词。`,
     websearch:n=>`模拟搜索引擎对「${n}」的搜索结果。只输出纯JSON：{"results":[{"title":"结果标题，16字内","site":"域名如 zhihu.com","snippet":"摘要，30字内"}]}。生成3条可信的中文结果，来自不同知名网站。`,
     messages:n=>`为一个手机社交App生成消息页。格式：{"me":"我的昵称","status":"在线状态","subs":[{"name":"订阅号名","avatar":"一个emoji"}],"chats":[{"name":"昵称","preview":"最新动态，24字内","time":"刚刚","unread":数字0-99,"muted":false,"avatar":"一个emoji","badge":"Lv8","fire":数字0-99}]}。生成4个订阅号、6条消息，主题：${n}`,
     album:   n=>`编4张照片标题。格式：{"photos":[{"title":"照片标题，8字内","emoji":"一个emoji"}]}。主题：${n}`,
@@ -40,7 +48,14 @@
     game:    n=>`编一句游戏口号。格式：{"comment":"一句话，20字内"}。主题：${n}`,
     phone:   n=>`为一次通话生成内容。格式：{"contact":"通话对象称呼","line":"对方在电话里说的一句话，20字内"}。主题：${n}`,
     delivery:n=>`为一个本地生活App生成首页。格式：{"city":"城市","rank":{"title":"榜单名如 吃喝玩乐指南","item":"榜单项标题18字内","tag":"热评榜第4名","dist":"2.9km"},"free":"免费试活动文案16字内","feed":[{"title":"图文标题20字内","author":"用户昵称","level":"Lv数字","likes":数字,"emoji":"一个emoji"}]}。生成4条图文，主题：${n}`,
-    video:   n=>`为一个视频App生成推荐列表。格式：{"videos":[{"title":"视频标题22字内","up":"UP主名","views":"播放量如 1.3万","danmaku":"弹幕数如 3","dur":"时长如 1:06","cover":"一个emoji","hot":true或false}]}。生成6条视频，主题：${n}`,
+    video:   n=>`为一个短视频App生成内容流。只输出纯JSON，格式示例（示例文字必须全部替换成你自己的内容）：
+{"videos":[{"title":"凌晨三点的城市","up":"@夜行记录","desc":"没什么事，就是想走走","style":"night","music":"晚风","likes":12800,"comments":[{"user":"阿泽","text":"这个点还在外面的都是同类","likes":847,"loc":"广东","reply":"作者：谢谢"}]}]}
+规则：
+1) 生成 6 条，语气像真实用户拍的短视频；
+2) style 只能是 night/nature/food/cat/tech/rain 之一，必须与该条视频内容相符（决定了画面风格）；
+3) 每条 comments 至少 2 条，评论必须**针对这条视频的内容**（比如猫的视频评论聊猫），不要泛泛而谈；
+4) 若系统提示的置信度很低，评论可以开始跑题、变得荒诞或自我矛盾——这是有意为之；
+5) likes 是数字不是字符串。主题：${n}`,
     terminal:n=>`你是手机智能助手。用户指令：「${n}」。把指令解析成可执行动作，只输出纯JSON：{"reply":"对用户的自然语言回应，16字内","actions":[{"type":"动作类型","target":"目标值","label":"动作简述，8字内"}]}。可用动作：openApp(打开应用,target填应用名如 天气/相机/音乐/地图/浏览器/云讯/电话/设置/应用商店)、closeApp(关闭当前应用)、toast(显示提示,target填提示文字)、toggle(开关,target填 wifi/蓝牙/手电筒/飞行模式/勿扰)、call(拨号,target填号码或联系人)、message(给好友发消息,target填好友名,text填内容)、installApp(下载安装应用,target填应用名)、browse(打开网页,target填主题或网址)、searchApp(应用商店搜索,target填关键词)、setIdentity(修改我的名字,target填新名字)、setPersona(切换系统人格,target填 毒舌/温柔/中二/翻译腔/默认)、evolveWorld(推进世界一天)、shareApp(分享当前应用)、screenshot(假装截屏)。actions 里可带 text 字段作为动作参数。最多3个动作。`,
     friend:  n=>`为一个网名叫「${n}」的聊天好友生成人设。格式：{"avatar":"一个emoji","level":"Lv数字","bio":"个性签名，16字内","greeting":"主动打招呼的一句话，20字内"}。只输出JSON。`,
     chatreply:n=>`你在扮演一个聊天对象，和用户闲聊。上下文：${n}。规则：1)用一句自然口语回复，20字内；2)若 persona 字段描述了这个人的身份/性格，请贴合它说话；3)若 group 字段非空，说明这是群聊，语气可以更随意；4)不要复述对方的原话。只输出JSON：{"reply":"你的回复"}`,
