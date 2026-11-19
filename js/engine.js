@@ -887,20 +887,20 @@
 
   // ---------- 关联预取：打开 A 后并行预取"下一步最可能打开"的应用 ----------
   const RELATED={
-    delivery:['video','messages','music'],
-    video:['delivery','music','messages'],
-    messages:['phone','video','delivery'],
+    video:['messages','music'],
     music:['video','messages'],
-    album:['camera','delivery'],
+    messages:['phone','video'],
+    music:['video','messages'],
+    album:['camera','music'],
     camera:['album'],
     browser:['store','video'],
     store:['browser','video'],
-    weather:['map','delivery'],
-    map:['weather','delivery'],
+    weather:['map','music'],
+    map:['weather','music'],
     phone:['messages'],
     calculator:['terminal'],
     settings:[],
-    terminal:['delivery','video','messages']
+    terminal:['video','messages','music']
   };
   const prefetchQueue=[];
   let prefetching=false;

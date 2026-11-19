@@ -132,7 +132,7 @@
   function desktopApps(){
     const seen={};
     const all=[];
-    APPS.forEach(a=>{ if(!seen[a.id]){seen[a.id]=1;all.push({...a,custom:false})} });
+    APPS.filter(a=>!a.hidden).forEach(a=>{ if(!seen[a.id]){seen[a.id]=1;all.push({...a,custom:false})} });
     (window.__INSTALLED||[]).forEach(a=>{
       if(seen[a.id])return;
       seen[a.id]=1;
@@ -354,7 +354,7 @@
       if(!app)return;
       dock.appendChild(iconEl(app,'dock-item',()=>window.ENGINE.openApp(app.id)));
     });
-    renderDrawerGrid(APPS);
+    renderDrawerGrid(APPS.filter(a=>!a.hidden));
     renderPage2();
     centerAllIcons();
     // 图标字体/布局就绪后再校正一次

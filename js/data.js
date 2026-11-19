@@ -54,7 +54,7 @@ const APPS = [
   { id:'music',      name:'音乐',     icon:'🎵', grad:['#ff6b6b','#c2185b'], kw:'音乐 歌曲 播放器 听歌' },
   { id:'video',      name:'短视频',   icon:'▶️', grad:['#ff4d8d','#c026d3'], kw:'短视频 视频 刷视频 抖音 快手 直播' },
   { id:'map',        name:'地图',     icon:'🗺️', grad:['#4ade80','#0f9d58'], kw:'地图 导航 定位 路线' },
-  { id:'delivery',   name:'袋鼠外卖', icon:'🦘', grad:['#fbbf24','#f59e0b'], kw:'外卖 点餐 送餐 美食 袋鼠 吃饭 饿了' },
+  { id:'delivery',   name:'外卖', icon:'🛵', grad:['#fbbf24','#f59e0b'], kw:'外卖 点餐 送餐 美食 吃饭 饿了', hidden:true },
   { id:'store',      name:'应用商店', icon:'🛍️', grad:['#ff9a44','#f4511e'], kw:'商店 市场 下载 安装' },
   { id:'browser',    name:'浏览器',   icon:'🌐', grad:['#48c6ef','#1a73e8'], kw:'浏览器 上网 网页 搜索' },
   { id:'camera',     name:'相机',     icon:'📷', grad:['#9aa4b2','#3b4452'], kw:'相机 拍照 摄影 照片' },

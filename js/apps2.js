@@ -473,7 +473,7 @@
       +'.nt-tip{text-align:center;font-size:10px;color:#a6adc0;margin-top:18px}';
 
     var sites=[['短视频','🎬','linear-gradient(135deg,#fb7185,#e11d48)'],
-               ['袋鼠外卖','🦘','linear-gradient(135deg,#fbbf24,#f59e0b)'],
+               ['短视频','🎬','linear-gradient(135deg,#fb7185,#e11d48)'],
                ['应用商店','🛍️','linear-gradient(135deg,#fb923c,#ea580c)'],
                ['天气','⛅','linear-gradient(135deg,#60a5fa,#2563eb)'],
                ['音乐','🎵','linear-gradient(135deg,#f472b6,#be185d)'],
@@ -1625,7 +1625,7 @@ render();`;
         emoji:pick(['🍩','🍔','🍜','🥩','🍰','🍤','🧋','🍕'])
       }));
     }
-    const cats=[['🍗','美食'],['🎡','休闲玩乐'],['🏨','酒店民宿'],['🏝️','景点游玩'],['🦘','袋鼠外卖'],
+    const cats=[['🍗','美食'],['🎡','休闲玩乐'],['🏨','酒店民宿'],['🏝️','景点游玩'],['🛵','外卖'],
                 ['💉','医学美容'],['🎫','特价团'],['💆','按摩足疗'],['💇','丽人美发'],['🎬','电影演出']];
     const feedHtml=feed.slice(0,6).map((f,i)=>{
       const emo=f.emoji||pick(['🍩','🍔','🍜','🥩','🍰','🍤']);
@@ -1637,7 +1637,7 @@ render();`;
         +'<span class="lk">♡ '+String(f.likes==null?0:f.likes)+'</span></div></div></div>';
     }).join('');
     return shell({bare:true,
-      title:'袋鼠外卖', icon:'🦘', accent:'#fb923c',
+      title:'外卖', icon:'🛵', accent:'#fb923c',
       css:'.dl{padding:0 0 6px}'
         +'.dtop{display:flex;align-items:flex-end;gap:13px;padding:10px 14px 2px;font-size:13px}'
         +'.dtop .t{color:#8b90a5}.dtop .t.on{color:#fff;font-weight:700;font-size:14.5px}'
