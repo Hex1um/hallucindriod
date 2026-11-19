@@ -2191,8 +2191,9 @@ window.addEventListener('message',function(e){
   if(e.data.type==='videodata'){
     showLoading(false);loadingMore=false;
     var before=D.videos.length;
+    window.__lastVD=e.data.data;                     // 便于排查模型返回格式
     if(e.data.data&&Array.isArray(e.data.data.videos))appendVideos(e.data.data.videos);
-    else appendVideos(localFallback());
+    if(D.videos.length===before)appendVideos(localFallback());   // 兜底：模型格式不对也要能继续刷
     if(autoAdvance&&D.videos.length>before){autoAdvance=false;idx=before;step=0;renderVideo()}
     else if(autoAdvance){autoAdvance=false;window.__tapTip&&window.__tapTip('暂时没有更多了')}
     return;
