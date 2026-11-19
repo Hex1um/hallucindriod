@@ -2380,6 +2380,7 @@ function switchTab(tab){
   else openPublish();
 }
 document.querySelectorAll('#vdTabs .vtab').forEach(function(b){b.onclick=function(){switchTab(this.getAttribute('data-t'))}});
+window.__vdState=function(){return {len:D.videos.length,idx:idx,auto:autoAdvance,loading:loadingMore,lastReq:reqSeq}};
 pageBox.style.display='none';
 renderVideo();`;
 
