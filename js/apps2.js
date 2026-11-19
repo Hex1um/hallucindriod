@@ -1432,28 +1432,80 @@ render();`;
     const PH=/^(功能|feature)\s*\d+$/i;
     const rawF=(L&&Array.isArray(L.features))?L.features:[];
     const cleanF=rawF.filter(f=>typeof f==='string'&&f.trim()&&!PH.test(f.trim()));
-    const features=cleanF.length>=2?cleanF.slice(0,3):pickN(['语音吐槽','AI 算命','自动摸鱼','量子记账','情绪识别','赛博祈福','智能找借口','梦境回放','反向打卡','电子木鱼'],3);
+    const features=cleanF.length>=2?cleanF.slice(0,3):pickN(['点一下就有反馈','数值会自己长大','失败也算进度'],3);
     const badTag=/一句.*广告语|20字内/i;
-    const tagline=(L&&L.tagline&&!badTag.test(L.tagline))?L.tagline:(adj+noun+' · 由 AI 生成，独一无二');
+    const tagline=(L&&L.tagline&&!badTag.test(L.tagline))?L.tagline:(adj+noun+' · 由 AI 现场生成');
     const esc=window.OS_DATA.escHTML;
-    const fl=features.map(f=>'<div class="gf"><span>✦</span><div><b>'+esc(f)+'</b><small>由'+(L?'在线服务':'本地引擎')+'实时驱动</small></div></div>').join('');
+
+    // 玩法：点击积累 → 升级 → 文案随等级变化。任何下载的应用都能玩
+    const CTA=['开始使用','继续积累','再来一次','停不下来了','就这样吧'];
+    const WORDS_BY_LV=[
+      ['第一下总是最难的','有点意思了'],
+      ['手感来了','它在回应你'],
+      ['这个数字开始有重量','别停'],
+      ['你已经是老手了','它好像有点累了'],
+      ['在这样下去会出事','你确定还要继续？'],
+      ['数字已经不重要了','……']
+    ];
+    const plays=features.map((f,i)=>'<div class="gf"><span>'+(i===0?'✦':(i===1?'◈':'◇'))+'</span><div><b>'+esc(f)+'</b><small>点下面的按钮就会触发</small></div></div>').join('');
+
     return shell({
       title:topic, icon:'✦', accent:pal.a,
-      css:'.gn{padding:22px;text-align:center}'
-        +'.gb{width:120px;height:120px;border-radius:30px;margin:8px auto 18px;background:linear-gradient(135deg,'+pal.a+','+pal.b+');'
-        +'display:flex;align-items:center;justify-content:center;font-size:56px;box-shadow:0 16px 36px rgba(0,0,0,.4)}'
-        +'.gn h2{font-size:22px;margin:0 0 4px}.gn .sub{font-size:12px;color:#8b90a5;margin-bottom:22px}'
-        +'.gf{display:flex;gap:12px;align-items:center;text-align:left;padding:13px 15px;margin-bottom:10px;border-radius:14px}'
-        +'.gf span{font-size:20px;color:var(--ac)}.gf b{font-size:13px;display:block}.gf small{font-size:10px;color:#8b90a5}'
-        +'.open{margin-top:12px;border:none;border-radius:999px;padding:12px 30px;background:var(--ac);color:#0b0b12;font-weight:700;cursor:pointer;font-size:14px}',
-      html:'<div class="gn"><div class="gb">'+pick(['🪄','🔮','🤖','🫧','🧊','🌈'])+'</div>'
+      css:'.gn{padding:22px 20px 26px;text-align:center;height:100%;overflow-y:auto;scrollbar-width:none}'
+        +'.gn::-webkit-scrollbar{display:none}'
+        +'.gb{width:112px;height:112px;border-radius:30px;margin:6px auto 16px;background:linear-gradient(135deg,'+pal.a+','+pal.b+');'
+        +'display:flex;align-items:center;justify-content:center;font-size:54px;box-shadow:0 16px 36px rgba(0,0,0,.4);transition:transform .12s}'
+        +'.gb:active{transform:scale(.94)}'
+        +'.gn h2{font-size:21px;margin:0 0 4px}.gn .sub{font-size:12px;color:#8b90a5;margin-bottom:16px}'
+        +'.score{font-size:44px;font-weight:200;color:#fff;line-height:1;margin:6px 0 2px;font-variant-numeric:tabular-nums}'
+        +'.slabel{font-size:10.5px;color:#6f7488;letter-spacing:1px;margin-bottom:14px}'
+        +'.bar{height:6px;border-radius:999px;background:rgba(255,255,255,.09);overflow:hidden;margin:0 8px 6px}'
+        +'.bar i{display:block;height:100%;width:0;background:linear-gradient(90deg,'+pal.a+','+pal.b+');transition:width .25s}'
+        +'.lv{font-size:10.5px;color:#8b90a5;margin-bottom:16px}'
+        +'.big{margin:2px auto 10px;display:block;width:100%;max-width:260px;border:none;border-radius:16px;padding:15px;'
+        +'background:linear-gradient(135deg,'+pal.a+','+pal.b+');color:#0b0b12;font-size:15px;font-weight:800;cursor:pointer}'
+        +'.big:active{opacity:.88}'
+        +'.hint{font-size:12px;color:#a9adbd;min-height:18px;margin-bottom:16px}'
+        +'.gf{display:flex;gap:12px;align-items:center;text-align:left;padding:11px 14px;margin-bottom:8px;border-radius:14px;background:rgba(255,255,255,.04)}'
+        +'.gf span{font-size:18px;color:var(--ac)}.gf b{font-size:12.5px;display:block}.gf small{font-size:10px;color:#8b90a5}'
+        +'.float{position:fixed;color:'+pal.a+';font-weight:800;font-size:18px;pointer-events:none;animation:fl .8s forwards;z-index:50}'
+        +'@keyframes fl{to{transform:translateY(-60px);opacity:0}}',
+      html:'<div class="gn"><div class="gb" id="orb">'+pick(['🪄','🔮','🤖','🫧','🧊','🌈'])+'</div>'
         +'<h2>'+esc(topic)+'</h2><div class="sub">'+esc(tagline)+'</div>'
-        +fl+'<button class="open" id="op">立即体验</button></div>',
-      js:'document.getElementById("op").onclick=function(){this.textContent="✦ 正在运行…";'
-        +'var s=this;setTimeout(function(){s.textContent="功能正在生成，请稍候…"},1600)}'
+        +'<div class="score" id="sc">0</div><div class="slabel">PROGRESS</div>'
+        +'<div class="bar"><i id="bar"></i></div><div class="lv" id="lv">Lv.1 · 刚开始</div>'
+        +'<button class="big" id="op">'+CTA[0]+'</button>'
+        +'<div class="hint" id="hint">点一下试试</div>'
+        +plays+'</div>',
+      js:'var WORDS='+JSON.stringify(WORDS_BY_LV)+',CTA='+JSON.stringify(CTA)+';'
+        +'var n=0,lv=1,sc=document.getElementById("sc"),bar=document.getElementById("bar"),'
+        +'lvEl=document.getElementById("lv"),hint=document.getElementById("hint"),'
+        +'op=document.getElementById("op"),orb=document.getElementById("orb");'
+        +'function draw(){'
+        +'  sc.textContent=n;'
+        +'  var pct=(n%10)/10*100;bar.style.width=pct+"%";'
+        +'  lvEl.textContent="Lv."+lv+" · "+(lv>4?"数字已经不重要了":(lv>2?"手感来了":"刚开始"));'
+        +'  op.textContent=CTA[Math.min(4,lv-1)];'
+        +'}'
+        +'function pop(x,y,txt){'
+        +'  var d=document.createElement("div");d.className="float";d.textContent=txt;'
+        +'  d.style.left=(x-10)+"px";d.style.top=(y-24)+"px";'
+        +'  document.body.appendChild(d);setTimeout(function(){d.remove()},820);'
+        +'}'
+        +'op.onclick=function(e){'
+        +'  n++;'
+        +'  if(n%10===0){lv++;parent.postMessage({type:"tone",freq:520+lv*60,dur:0.35,vol:0.09,wave:"triangle"},"*")}'
+        +'  else{parent.postMessage({type:"tone",freq:320+(n%9)*24,dur:0.12,vol:0.05,wave:"sine"},"*")}'
+        +'  var arr=WORDS[Math.min(WORDS.length-1,Math.floor(n/25))]||[""];'
+        +'  hint.textContent=arr[n%arr.length];'
+        +'  pop(e.clientX,e.clientY,"+"+lv);'
+        +'  orb.style.fontSize=(54+Math.min(16,lv*3))+"px";'
+        +'  draw();'
+        +'};'
+        +'orb.onclick=function(){op.click()};'
+        +'draw();'
     });
   };
-
 
   // ---------- 智能终端：自然语言 → 手机动作 ----------
   B.terminal = function(){
