@@ -664,6 +664,10 @@
       socialPush({type:'social:reply',friend:f.name,text:msg.text});
       if(window.HOS&&window.HOS.toast)window.HOS.toast('新消息：'+f.name);
     };
+    // 收到好友广播的视频：p2p.js 已写入本地池，这里只提示
+    window.P2P.onPool=function(v){
+      if(window.HOS&&window.HOS.toast)window.HOS.toast('好友分享了视频：'+String(v&&v.title||'无题').slice(0,16));
+    };
   }
 
   // 打开外部 Web 应用：直接 src 加载站点。
@@ -834,11 +838,42 @@
     const remote=(D.CONFIG&&D.CONFIG.poolUrl)||'';
     if(!remote)return [];
     try{
-      const r=await fetch(remote+'?t='+Date.now(),{cache:'no-store'});
+      const sep=remote.indexOf('?')>=0?'&':'?';
+      const r=await fetch(remote+sep+'t='+Date.now(),{cache:'no-store'});
       if(!r.ok)return [];
       const j=await r.json();
       return Array.isArray(j&&j.videos)?j.videos.slice(0,20):[];
     }catch(e){ return [] }
+  }
+
+  // 把本地池 + 远端公共池 + P2P 收到的视频整理成短视频应用可消费的统一结构。
+  // 短视频应用每次 loadMore 都会请求一批，这里把"别人发布的视频"混进去，
+  // 让 README 承诺的「别人也能刷到你的视频」真正成立（此前只写不读）。
+  function normalizePoolVideo(v,seenTitles){
+    if(!v||typeof v!=='object')return null;
+    const title=String(v.title||'').trim().slice(0,40);
+    if(!title||seenTitles.has(title))return null;
+    seenTitles.add(title);
+    return {
+      title:title,
+      up:String(v.up||'@创作者').slice(0,18),
+      desc:String(v.desc||'').slice(0,60),
+      style:String(v.style||'night'),
+      music:String(v.music||'原声').slice(0,18),
+      likes:Number(v.likes)||0,
+      shares:Number(v.shares)||0,
+      comments:Array.isArray(v.comments)?v.comments.slice(0,6):[],
+      mine:!!v.mine
+    };
+  }
+  function collectPoolVideos(seen){
+    const seenTitles=new Set((Array.isArray(seen)?seen:[]).map(x=>String(x)));
+    const out=[];
+    // ① 本机发布 / P2P 收到的（localStorage）
+    let local=[];
+    try{ local=JSON.parse(localStorage.getItem('hallucindriod_pool_v1')||'[]') }catch(e){}
+    if(Array.isArray(local))local.slice(0,20).forEach(v=>{ const n=normalizePoolVideo(v,seenTitles); if(n)out.push(n) });
+    return out; // ② 远端公共池由 videogen 分支异步并入（见下）
   }
 
   // ---------- 世界演化：让城市有"过去"（playbook ⑪） ----------
@@ -1071,12 +1106,21 @@
       const seen=Array.isArray(e.data.seen)?e.data.seen.slice(-12):[];
       const req=e.data.req;
       const theme=String(e.data.theme||'短视频')+(seen.length?('（不要和这些重复：'+seen.join('、')+'）'):'');
-      Promise.resolve()
-        .then(()=>window.LLM?window.LLM.fetchHallucination('video',theme):null)
-        .catch(()=>null)
-        .then(d=>{
-          try{ frame&&frame.contentWindow&&frame.contentWindow.postMessage({type:'videodata',data:d,req:req},'*') }catch(err){}
-        });
+      // 本地/远端/P2P 池里"别人发布过的"优先混入，保证公共池可读（P0）
+      const poolVideos=collectPoolVideos(seen);
+      Promise.all([
+        Promise.resolve().then(()=>window.LLM?window.LLM.fetchHallucination('video',theme):null).catch(()=>null),
+        fetchPool()
+      ]).then(([d,remotePool])=>{
+        const merged={};
+        if(d&&typeof d==='object')Object.assign(merged,d);
+        const seenTitles=new Set((Array.isArray(seen)?seen:[]).map(x=>String(x)).concat(poolVideos.map(v=>v.title)));
+        const extra=[];
+        if(Array.isArray(remotePool))remotePool.forEach(v=>{ const n=normalizePoolVideo(v,seenTitles); if(n)extra.push(n) });
+        const gen=Array.isArray(merged.videos)?merged.videos.filter(v=>v&&v.title&&!seenTitles.has(String(v.title).slice(0,40))):[];
+        merged.videos=poolVideos.concat(extra,gen);
+        try{ frame&&frame.contentWindow&&frame.contentWindow.postMessage({type:'videodata',data:merged,req:req},'*') }catch(err){}
+      });
     }
     else if(e.data.type==='publishVideo'){
       // 用户发布的视频进本地池，并尝试广播给在线好友

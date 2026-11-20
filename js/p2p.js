@@ -12,7 +12,7 @@
   var peer=null, myId='', myName='';
   var conns={};          // peerId -> DataConnection
   var inflight={};       // peerId -> Promise（避免重复连接）
-  var api={ online:false, lastError:'', onMessage:null };
+  var api={ online:false, lastError:'', onMessage:null, onPool:null };
 
   function hash(s){
     var h=5381;
@@ -67,6 +67,28 @@
     }
     if(d.t==='msg'&&api.onMessage){
       api.onMessage(peerId,{text:String(d.text||'').slice(0,500),ts:Number(d.ts)||Date.now()});
+    }
+    if(d.t==='pool'&&d.video){
+      // 收到好友广播的短视频 → 写入本机公共池，别人的视频也能被刷到（P0）
+      try{
+        var pool=JSON.parse(localStorage.getItem('hallucindriod_pool_v1')||'[]');
+        if(!Array.isArray(pool))pool=[];
+        var v=d.video;
+        var title=String(v&&v.title||'').trim().slice(0,40);
+        if(title&&!pool.some(function(x){return String(x&&x.title||'').slice(0,40)===title})){
+          pool.unshift({
+            title:title, up:String(v.up||'@好友').slice(0,18),
+            desc:String(v.desc||'').slice(0,60), style:String(v.style||'night'),
+            music:String(v.music||'原声').slice(0,18),
+            likes:Number(v.likes)||0, shares:Number(v.shares)||0,
+            comments:Array.isArray(v.comments)?v.comments.slice(0,6):[],
+            mine:false, ts:Date.now()
+          });
+          pool=pool.slice(0,60);
+          localStorage.setItem('hallucindriod_pool_v1',JSON.stringify(pool));
+          if(api.onPool)api.onPool(v);
+        }
+      }catch(e){}
     }
   }
 
@@ -147,6 +169,16 @@
     var c=conns[peerId];
     if(c&&c.open){ try{ c.send(msg); return true; }catch(e){} }
     return false;
+  };
+
+  // 广播给所有在线连接（engine.js 发布视频时调用；此前该 API 不存在，静默失效）
+  api.broadcast=function(msg){
+    var n=0;
+    Object.keys(conns).forEach(function(id){
+      var c=conns[id];
+      if(c&&c.open){ try{ c.send(msg); n++ }catch(e){} }
+    });
+    return n;
   };
 
   api.isOnline=function(){ return api.online; };
