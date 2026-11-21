@@ -459,6 +459,9 @@
       +'.nt-logo span{color:#8b90a5;font-weight:500;font-size:13px;margin-left:5px}'
       +'.nt-search{margin:18px 18px 0;display:flex;align-items:center;gap:8px;background:#fff;border:1px solid #e3e7f6;border-radius:14px;padding:9px 10px 9px 13px;box-shadow:0 8px 26px rgba(80,90,160,.09)}'
       +'.nt-search .ic{font-size:14px;color:#98a0b5}'
+      +'.url{position:relative}.url .regen{position:absolute;right:4px;top:50%;transform:translateY(-50%);border:none;background:none;font-size:13px;cursor:pointer;padding:4px 6px;line-height:1}'
+      +'.nt-lucky{margin:14px 18px 0;text-align:center;font-size:12px;color:#6b7280;padding:9px;border-radius:12px;'
+      +'border:1px dashed #dfe3f0;cursor:pointer;background:#fbfcff}.nt-lucky:active{background:#f0f3fb}'
       +'.nt-search input{flex:1;border:none;outline:none;font-size:13px;color:#333;background:none;min-width:0;padding:2px 0}'
       +'.nt-search button{border:none;border-radius:10px;padding:8px 15px;background:linear-gradient(135deg,#6366f1,#4f46e5);color:#fff;font-size:12px;font-weight:700;cursor:pointer}'
       +'.nt-quick{display:grid;grid-template-columns:repeat(4,1fr);gap:17px 6px;padding:26px 20px 4px}'
@@ -485,6 +488,7 @@
     var hotHTML=hot.map(function(h,i){return '<div class="hi" data-k="'+h+'"><span class="n">'+(i+1)+'</span><span>'+h+'</span></div>'}).join('');
     var newTabHTML='<div class="newtab"><div class="nt-hero"><div class="nt-logo">✦ 幻卓<span>浏览器</span></div></div>'
       +'<div class="nt-search"><span class="ic">⌕</span><input id="ntInput" placeholder="搜索或输入网址" autocomplete="off"><button id="ntGo">搜索</button></div>'
+      +'<div class="nt-lucky" id="ntLucky">🎲 随便逛逛</div>'
       +'<div class="nt-quick">'+siteHTML+'</div>'
       +'<div class="nt-hot"><div class="hh">🔥 热门推荐</div>'+hotHTML+'</div>'
       +'<div class="nt-tip">输入任意内容，网页会即时生成</div></div>';
@@ -500,8 +504,9 @@
         +siteCSS+ntCSS,
       html:'<div id="appFrameHost"><div class="bbar">'
         +'<button id="back" title="后退">‹</button><button id="fwd" title="前进">›</button><button id="home" title="主页">⌂</button>'
-        +'<div class="url">🔒 <input id="urlIn" value="" placeholder="搜索或输入网址"></div>'
-        +'<button id="go" title="前往">↻</button></div><div class="pbar" id="pbar"></div><div class="web" id="web">'+newTabHTML+'</div></div>',
+        +'<div class="url">🔒 <input id="urlIn" value="" placeholder="搜索或输入网址">'
+        +'<button class="regen" id="regen" title="换一版">🎲</button></div>'
+        +'<button id="go" title="前往">↵</button></div><div class="pbar" id="pbar"></div><div class="web" id="web">'+newTabHTML+'</div></div>',
       js:'var renderSiteHTML='+renderSrc+';'
         +'var NEWTAB='+JSON.stringify(newTabHTML)+';'
         +'var urlIn=document.getElementById("urlIn"),web=document.getElementById("web"),pbar=document.getElementById("pbar");'
@@ -527,6 +532,8 @@
         +'  var inp=document.getElementById("ntInput"),go=document.getElementById("ntGo");'
         +'  if(!inp||!go)return;'
         +'  go.onclick=function(){nav(inp.value,true)};'
+        +'  var lk=document.getElementById("ntLucky");'
+        +'  if(lk)lk.onclick=function(){var t=["月球房产中介","深夜食堂菜单","二手书店","云上农场","旧物仓","赛博花店","失物招领处","天气管理局"];nav(t[Math.floor(Math.random()*t.length)],true)};'
         +'  inp.onkeydown=function(e){if(e.key==="Enter"){nav(inp.value,true);inp.blur()}};'
         +'  document.querySelectorAll(".nt-site,.nt-hot .hi").forEach(function(s){s.onclick=function(){nav(this.getAttribute("data-k"),true)}});'
         +'}'
@@ -575,6 +582,9 @@
         +'});'
         +'document.getElementById("go").onclick=function(){var v=urlIn.value.trim();if(!v){showNewTab();return}nav(v,true)};'
         +'urlIn.onkeydown=function(e){if(e.key==="Enter"){document.getElementById("go").click();urlIn.blur()}};'
+        +'document.getElementById("regen").onclick=function(){'
+        +'if(!curTopic){var t=["月球房产","深夜食堂","二手书店","云上农场","旧物仓","赛博花店"];nav(t[Math.floor(Math.random()*t.length)],true);return}'
+        +'nav(curTopic,false);if(window.__tapTip)window.__tapTip("换一版");};'
         +'document.getElementById("home").onclick=function(){showNewTab()};'
         +'document.getElementById("back").onclick=function(){if(hi>0){hi--;nav(hist[hi],false)}else{showNewTab()}};'
         +'document.getElementById("fwd").onclick=function(){if(hi<hist.length-1){hi++;nav(hist[hi],false)}};'
@@ -1241,6 +1251,7 @@ render();`;
 
   /* ---------- 设置：一本正经的幻觉系统信息 ---------- */
   B.settings = function(){
+    const esc=(window.OS_DATA&&window.OS_DATA.escHTML)||function(v){return String(v==null?'':v)};
     const L=(typeof window.__LLM!=='undefined'&&window.__LLM)?window.__LLM:null;
     const ver=pick(WORDS.systemVer), city=pick(WORDS.cities);
     const device=(L&&L.device)||('Hallucindriod · '+pick(['Pro','Ultra','SE']));
@@ -1369,13 +1380,13 @@ render();`;
         +'<div class="grp card"><div class="gl">🎭 系统人格</div>'
         +'<div class="prow">'+personaBtns+'</div>'
         +'<div class="whint" id="pTone">'+(PERSONAS[curPersona]?('当前：'+PERSONAS[curPersona].name+' · '+PERSONAS[curPersona].tone):'')+'</div></div>'
+        +'<div class="grp card"><div class="gl">📡 短视频公共池</div>'
+        +'<div style="padding:0 14px 14px"><input id="poolUrl" placeholder="留空则只用本地池" value="'+String((window.OS_DATA&&window.OS_DATA.CONFIG&&window.OS_DATA.CONFIG.poolUrl)||'').replace(/"/g,'&quot;')+'" style="width:100%;box-sizing:border-box;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);border-radius:10px;padding:10px 12px;color:#fff;font-size:11.5px;outline:none">'
+        +'<div class="whint">填一个自己部署的接口地址，就能和别人共用视频池。留空时只在本机保存，别人刷不到。</div></div></div>'
         +'<div class="grp card"><div class="gl">关于本机</div>'+rows+'</div>'
         +'<div class="grp card"><div class="gl">🖥️ 桌面</div>'
         +'<div class="refresh-head"><span>已从桌面移除的应用</span><button class="rall" id="restoreApps">全部恢复</button></div>'
         +'<div class="rrow"><span class="rname" style="color:#6f7488;font-size:11px">长按桌面图标可编辑：拖动排序、点左上角 × 移除</span></div></div>'
-        +'<div class="grp card"><div class="gl">📡 短视频公共池</div>'
-        +'<div style="padding:0 14px 14px"><input id="poolUrl" placeholder="留空则只用本地池" value="'+String((window.OS_DATA&&window.OS_DATA.CONFIG&&window.OS_DATA.CONFIG.poolUrl)||'').replace(/"/g,'&quot;')+'" style="width:100%;box-sizing:border-box;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);border-radius:10px;padding:10px 12px;color:#fff;font-size:11.5px;outline:none">'
-        +'<div class="whint">填一个自己部署的接口地址，就能和别人共用视频池。留空时只在本机保存，别人刷不到。</div></div></div>'
         +'<div class="grp card"><div class="gl">🔄 数据刷新</div>'
         +'<div class="refresh-head"><span>重新生成应用内容</span><button class="rall" id="refreshAll">刷新全部</button></div>'
         +refreshRows+'</div>'
